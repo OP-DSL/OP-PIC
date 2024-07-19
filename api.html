@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OP-PIC C++ API &mdash; OP-PIC 0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=2709fde1"></script>
+        <script src="_static/doctools.js?v=9a2dae69"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Developer Guide" href="developer_guide.html" />
+    <link rel="prev" title="Getting Started" href="getting_started.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            OP-PIC
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting Started</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">OP-PIC C++ API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#initialisation-and-termination">(1) Initialisation and Termination</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#dataset-layout">(2) Dataset Layout</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#parallel-loops">(3) Parallel Loops</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#particle-injections">(4) Particle injections</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#hdf5-i-o">(5) HDF5 I/O</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="developer_guide.html">Developer Guide</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">OP-PIC</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">OP-PIC C++ API</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/api.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="op-pic-c-api">
+<h1>OP-PIC C++ API<a class="headerlink" href="#op-pic-c-api" title="Link to this heading"></a></h1>
+<section id="initialisation-and-termination">
+<h2>(1) Initialisation and Termination<a class="headerlink" href="#initialisation-and-termination" title="Link to this heading"></a></h2>
+<dl class="c function">
+<dt class="sig sig-object c" id="c.opp_init">
+<span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">opp_init</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n"><span class="pre">argc</span></span>, <span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">argv</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.opp_init" title="Link to this definition"></a><br /></dt>
+<dd><p>This routine must be called before all other OP-PIC routines.
+If <cite>USE_PETSC</cite> is defined during compilation, <cite>opp_init</cite> will initialize PETSc library as well (using <code class="xref c c-func docutils literal notranslate"><span class="pre">PetscInitialize()</span></code>).
+Under MPI back-ends, this routine also calls <code class="xref c c-func docutils literal notranslate"><span class="pre">MPI_Init()</span></code> unless its already called previously.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>argc</strong> – The number of command line arguments.</p></li>
+<li><p><strong>argv</strong> – The command line arguments, as passed to <code class="xref c c-func docutils literal notranslate"><span class="pre">main()</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.opp_exit">
+<span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">opp_exit</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.opp_exit" title="Link to this definition"></a><br /></dt>
+<dd><p>This routine must be called last to cleanly terminate the OP-PIC runtime.
+If <cite>USE_PETSC</cite> is defined during compilation, <cite>opp_exit</cite> will finalize PETSc library as well (using <code class="xref c c-func docutils literal notranslate"><span class="pre">PetscFinalize()</span></code>).
+Under MPI back-ends, this routine also calls <code class="xref c c-func docutils literal notranslate"><span class="pre">MPI_Finalize()</span></code> unless its has been called previously.
+A runtime error will occur if <code class="xref c c-func docutils literal notranslate"><span class="pre">MPI_Finalize()</span></code> is called after <a class="reference internal" href="#c.opp_exit" title="opp_exit"><code class="xref c c-func docutils literal notranslate"><span class="pre">opp_exit()</span></code></a>.</p>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.opp_decl_set">
+<span class="n"><span class="pre">opp_set</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">opp_decl_set</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n"><span class="pre">size</span></span>, <span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">name</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.opp_decl_set" title="Link to this definition"></a><br /></dt>
+<dd><p>This routine declares a mesh set.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>size</strong> – Number of set elements.</p></li>
+<li><p><strong>name</strong> – A name to be used for output diagnostics.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A set ID.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.opp_decl_particle_set">
+<span class="n"><span class="pre">opp_set</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">opp_decl_particle_set</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">name</span></span>, <span class="n"><span class="pre">opp_set</span></span><span class="w"> </span><span class="n"><span class="pre">cells_set</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.opp_decl_particle_set" title="Link to this definition"></a><br /></dt>
+<dd><p>This routine declares a particle set with zero particles in it.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> – A name to be used for output diagnostics.</p></li>
+<li><p><strong>size</strong> – The underlying mesh set related.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A set ID.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c">
+<span class="n"><span class="pre">opp_set</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">opp_decl_particle_set</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n"><span class="pre">size</span></span>, <span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">name</span></span>, <span class="n"><span class="pre">opp_set</span></span><span class="w"> </span><span class="n"><span class="pre">cells_set</span></span><span class="sig-paren">)</span><br /></dt>
+<dd><p>This routine declares a particle set with a given number of particles in it.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>size</strong> – Number of particles in the set.</p></li>
+<li><p><strong>name</strong> – A name to be used for output diagnostics.</p></li>
+<li><p><strong>size</strong> – The underlying mesh set related.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A set ID.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.opp_decl_map">
+<span class="n"><span class="pre">opp_map</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">opp_decl_map</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">opp_set</span></span><span class="w"> </span><span class="n"><span class="pre">from</span></span>, <span class="n"><span class="pre">opp_set</span></span><span class="w"> </span><span class="n"><span class="pre">to</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n"><span class="pre">dim</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">imap</span></span>, <span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">name</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.opp_decl_map" title="Link to this definition"></a><br /></dt>
+<dd><p>This routine defines a mapping between sets.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>from</strong> – Source set.</p></li>
+<li><p><strong>to</strong> – Destination set.</p></li>
+<li><p><strong>dim</strong> – Number of mappings per source element.</p></li>
+<li><p><strong>imap</strong> – Mapping table.</p></li>
+<li><p><strong>name</strong> – A name to be used for output diagnostics.</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>imap should contain a valid data array pointer. The only exception is to provide <cite>nullptr</cite> given the from set is a particle set with zero particles in it.</p>
+</div>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.opp_decl_dat">
+<span class="n"><span class="pre">opp_dat</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">opp_decl_dat</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">opp_set</span></span><span class="w"> </span><span class="n"><span class="pre">set</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n"><span class="pre">dim</span></span>, <span class="n"><span class="pre">opp_data_type</span></span><span class="w"> </span><span class="n"><span class="pre">dtype</span></span>, <span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">data</span></span>, <span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">name</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.opp_decl_dat" title="Link to this definition"></a><br /></dt>
+<dd><p>This routine defines a dataset.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>set</strong> – The set the data is associated with (can be a mesh set or a particle set).</p></li>
+<li><p><strong>dim</strong> – Number of data elements per set element.</p></li>
+<li><p><strong>type</strong> – The datatype, This can be a type in <span class="c-expr sig sig-inline c"><span class="n">opp_data_type</span></span> enum (<span class="c-expr sig sig-inline c"><span class="n">DT_INT</span></span> or <span class="c-expr sig sig-inline c"><span class="n">DT_REAL</span></span>, other type may be added later).</p></li>
+<li><p><strong>data</strong> – Input data of type <code class="xref c c-type docutils literal notranslate"><span class="pre">T</span></code> (checked for consistency with <strong>type</strong> at run-time). The data must be provided in AoS form with each of the <strong>dim</strong> elements per set element contiguous in memory.</p></li>
+<li><p><strong>name</strong> – A name to be used for output diagnostics.</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>At present <strong>dim</strong> must be an integer literal or a <span class="c-expr sig sig-inline c">#define</span></p>
+</div>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.opp_decl_const">
+<span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">opp_decl_const</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n"><span class="pre">dim</span></span>, <span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">data</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">name</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.opp_decl_const" title="Link to this definition"></a><br /></dt>
+<dd><p>This routine defines constant data with global scope that can be used in kernel functions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dim</strong> – Number of data elements. For maximum efficiency this should be an integer literal or a <span class="c-expr sig sig-inline c">#define</span>.</p></li>
+<li><p><strong>data</strong> – A pointer to the data, checked for type consistency at run-time.</p></li>
+<li><p><strong>name</strong> – The name as a string that the kernels access it, (should be <span class="c-expr sig sig-inline c">CONST_+&lt;var_name&gt;</span>).</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The variable is available in the kernel functions with type <span class="c-expr sig sig-inline c"><span class="n">T</span></span> with type <span class="c-expr sig sig-inline c"><span class="n">T</span><span class="p">*</span></span>. Hence even if <strong>dim</strong> is <span class="c-expr sig sig-inline c"><span class="m">1</span></span>, it should be accessed as <span class="c-expr sig sig-inline c">CONST_+&lt;var_name&gt;[0]</span> within the kernel.</p>
+</div>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">void</span> <span class="pre">opp_init_direct_hop(double</span> <span class="pre">grid_spacing,</span> <span class="pre">int</span> <span class="pre">dim,</span> <span class="pre">const</span> <span class="pre">opp_dat</span> <span class="pre">c_gbl_id,</span> <span class="pre">const</span> <span class="pre">opp::BoundingBox&amp;</span> <span class="pre">bounding_box)</span></span></dt>
+<dd><p>Existance of this routine suggest the code-generator to extract information from <a class="reference internal" href="#c.opp_particle_move" title="opp_particle_move"><code class="xref c c-func docutils literal notranslate"><span class="pre">opp_particle_move()</span></code></a> to generate direct-hop related code. Specifically, it will create direct-hop structure data and include direct hop related code within the particle move loop.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>grid_spacing</strong> – Direct hop structured mesh spacing.</p></li>
+<li><p><strong>dim</strong> – Dimension of the simulation (1D, 2D or 3D).</p></li>
+<li><p><strong>c_gbl_id</strong> – An <cite>opp_dat</cite> with global cell indices (mainly required to translate cell indices in an MPI code simulation, since mappings get renumbered).</p></li>
+<li><p><strong>bounding_box</strong> – A <cite>opp::BoundingBox</cite> indicating the simulation boundaries</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The bounding box object can be created by providing a mesh dat that has its positions (like node positions) using <span class="c-expr sig sig-inline c">opp::BoundingBox(const opp_dat pos_dat, int dim)</span> or by providing the calculated minimum and maximum domain coordinates using <span class="c-expr sig sig-inline c">opp::BoundingBox(int dim, opp_point minCoordinate, opp_point maxCoordinate)</span>.</p>
+</div>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">void</span> <span class="pre">opp_partition(std::string</span> <span class="pre">lib_name,</span> <span class="pre">opp_set</span> <span class="pre">prime_set,</span> <span class="pre">opp_map</span> <span class="pre">prime_map,</span> <span class="pre">opp_dat</span> <span class="pre">dat)</span></span></dt>
+<dd><p>This routine controls the partitioning of the sets used for distributed memory parallel execution.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>lib_name</strong> – The partitioning library to use, see below.</p></li>
+<li><p><strong>prime_set</strong> – Specifies the set to be partitioned.</p></li>
+<li><p><strong>prime_map</strong> – Specifies the map to be used to create adjacency lists for the <strong>prime_set</strong>. Required if using <span class="c-expr sig sig-inline c"><span class="s">&quot;KWAY&quot;</span></span> or <span class="c-expr sig sig-inline c"><span class="s">&quot;GEOMKWAY&quot;</span></span> (defaulted to <span class="c-expr sig sig-inline c"><span class="n">nullptr</span></span>).</p></li>
+<li><p><strong>dat</strong> – Specifies the <span class="c-expr sig sig-inline c"><span class="n">opp_dat</span></span> required for the partitioning strategy (defaulted to <span class="c-expr sig sig-inline c"><span class="n">nullptr</span></span>).</p></li>
+</ul>
+</dd>
+</dl>
+<p>The current options for <strong>lib_name</strong> are:</p>
+<ul class="simple">
+<li><p><span class="c-expr sig sig-inline c"><span class="s">&quot;PARMETIS_KWAY&quot;</span></span>: Uses the Kway routine of <a class="reference external" href="http://glaros.dtc.umn.edu/gkhome/metis/parmetis/overview">ParMETIS</a> library. Required to provide geometric coordinates of the <strong>prime_set</strong> through the data <cite>opp_dat</cite>.</p></li>
+<li><p><span class="c-expr sig sig-inline c"><span class="s">&quot;PARMETIS_GEOM&quot;</span></span>: Uses the Geom routine of <a class="reference external" href="http://glaros.dtc.umn.edu/gkhome/metis/parmetis/overview">ParMETIS</a> library. Required to provide a primary map.</p></li>
+<li><p><span class="c-expr sig sig-inline c"><span class="s">&quot;EXTERNAL&quot;</span></span>: External partitioning defining user specified partitioning scheme. The ranks for the primary set element to be, should be provided as a <cite>opp_dat</cite>. This routine can be used to partition the cells along the major particle movement axis to minimize particle communications.</p></li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>In addition to partitining the primary set, <code class="xref c c-func docutils literal notranslate"><span class="pre">opp_partition()</span></code> will partition the other mesh sets using <cite>opp_maps</cite> available. Then Halos and halo communication buffers will be created. Additionally, halo related particle communication data will get initialized.</p>
+</div>
+</dd></dl>
+
+</section>
+<section id="dataset-layout">
+<h2>(2) Dataset Layout<a class="headerlink" href="#dataset-layout" title="Link to this heading"></a></h2>
+<p>By default OP-PIC stores data in CPUs as AoS (Array of Structs) layout, matching what is supplied to <a class="reference internal" href="#c.opp_decl_dat" title="opp_decl_dat"><code class="xref c c-func docutils literal notranslate"><span class="pre">opp_decl_dat()</span></code></a> and <a class="reference internal" href="#c.opp_decl_map" title="opp_decl_map"><code class="xref c c-func docutils literal notranslate"><span class="pre">opp_decl_map()</span></code></a>, however, on GPUs, OP-PIC use SoA (Struct of Arrays) layouts using transformations.</p>
+</section>
+<section id="parallel-loops">
+<h2>(3) Parallel Loops<a class="headerlink" href="#parallel-loops" title="Link to this heading"></a></h2>
+<dl class="c function">
+<dt class="sig sig-object c" id="c.opp_par_loop">
+<span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">opp_par_loop</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">(</span></span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">kernel</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">(</span></span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">)</span></span>, <span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">name</span></span>, <span class="n"><span class="pre">opp_set</span></span><span class="w"> </span><span class="n"><span class="pre">set</span></span>, <span class="n"><span class="pre">opp_iterate_type</span></span><span class="w"> </span><span class="n"><span class="pre">iter_type</span></span>, <span class="p"><span class="pre">...</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.opp_par_loop" title="Link to this definition"></a><br /></dt>
+<dd><p>This routine executes a parallelised loop over the given <strong>set</strong>, with arguments provided by the <a class="reference internal" href="#c.opp_arg_gbl" title="opp_arg_gbl"><code class="xref c c-func docutils literal notranslate"><span class="pre">opp_arg_gbl()</span></code></a> and <a class="reference internal" href="#c.opp_arg_dat" title="opp_arg_dat"><code class="xref c c-func docutils literal notranslate"><span class="pre">opp_arg_dat()</span></code></a> routines.
+When set is a particle set, it will make use of <span class="c-expr sig sig-inline c"><a class="reference internal" href="#c.opp_par_loop" title="iter_type"><span class="n">iter_type</span></a></span> to decide whether to iterate over all particles or only over the injected particles.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>kernel</strong> – The kernel function to execute. The number of arguments to the kernel should match the number of <code class="xref c c-type docutils literal notranslate"><span class="pre">opp_arg</span></code> arguments provided to this routine.</p></li>
+<li><p><strong>name</strong> – A name to be used for output diagnostics.</p></li>
+<li><p><strong>set</strong> – The set to loop over.</p></li>
+<li><p><strong>iter_type</strong> – The iteration type. Possible values are, <span class="c-expr sig sig-inline c"><span class="n">OPP_ITERATE_ALL</span></span> and <span class="c-expr sig sig-inline c"><span class="n">OPP_ITERATE_INJECTED</span></span></p></li>
+<li><p><strong>...</strong> – The <code class="xref c c-type docutils literal notranslate"><span class="pre">opp_arg</span></code> arguments passed to each invocation of the kernel.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.opp_particle_move">
+<span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">opp_particle_move</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">(</span></span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">kernel</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">(</span></span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">)</span></span>, <span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">name</span></span>, <span class="n"><span class="pre">opp_set</span></span><span class="w"> </span><span class="n"><span class="pre">set</span></span>, <span class="n"><span class="pre">opp_map</span></span><span class="w"> </span><span class="n"><span class="pre">c2c_map</span></span>, <span class="n"><span class="pre">opp_map</span></span><span class="w"> </span><span class="n"><span class="pre">p2c_map</span></span>, <span class="p"><span class="pre">...</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.opp_particle_move" title="Link to this definition"></a><br /></dt>
+<dd><p>This routine executes a parallelised loop over the given <strong>particle set</strong>, with arguments provided by the <a class="reference internal" href="#c.opp_arg_gbl" title="opp_arg_gbl"><code class="xref c c-func docutils literal notranslate"><span class="pre">opp_arg_gbl()</span></code></a> and <a class="reference internal" href="#c.opp_arg_dat" title="opp_arg_dat"><code class="xref c c-func docutils literal notranslate"><span class="pre">opp_arg_dat()</span></code></a> routines.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>kernel</strong> – The kernel function to execute. The number of arguments to the kernel should match the number of <code class="xref c c-type docutils literal notranslate"><span class="pre">opp_arg</span></code> arguments provided to this routine.</p></li>
+<li><p><strong>name</strong> – A name to be used for output diagnostics.</p></li>
+<li><p><strong>set</strong> – The set to loop over.</p></li>
+<li><p><strong>c2c_map</strong> – A cell to cell mapping to find the neighour cell from the current cell.</p></li>
+<li><p><strong>p2c_map</strong> – The particle to cell mapping to map to the underlying cell.</p></li>
+<li><p><strong>...</strong> – The <code class="xref c c-type docutils literal notranslate"><span class="pre">opp_arg</span></code> arguments passed to each invocation of the kernel.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.opp_arg_gbl">
+<span class="n"><span class="pre">opp_arg</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">opp_arg_gbl</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">T</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">data</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n"><span class="pre">dim</span></span>, <span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">type</span></span>, <span class="n"><span class="pre">opp_access</span></span><span class="w"> </span><span class="n"><span class="pre">acc</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.opp_arg_gbl" title="Link to this definition"></a><br /></dt>
+<dd><p>This routine defines an <code class="xref c c-type docutils literal notranslate"><span class="pre">opp_arg</span></code> that may be used either to pass non-constant read-only data or to compute a global sum, maximum or minimum.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> – Source or destination data array.</p></li>
+<li><p><strong>dim</strong> – Number of data elements.</p></li>
+<li><p><strong>type</strong> – The datatype as a string. This is checked for consistency with <strong>data</strong> at run-time.</p></li>
+<li><p><strong>acc</strong> – The access type.</p></li>
+</ul>
+</dd>
+</dl>
+<p>Valid access types for this routine are:</p>
+<ul class="simple">
+<li><p><code class="xref c c-data docutils literal notranslate"><span class="pre">OPP_READ</span></code>: Read-only.</p></li>
+<li><p><code class="xref c c-data docutils literal notranslate"><span class="pre">OPP_INC</span></code>: Global reduction to compute a sum.</p></li>
+<li><p><code class="xref c c-data docutils literal notranslate"><span class="pre">OPP_MAX</span></code>: Global reduction to compute a maximum.</p></li>
+<li><p><code class="xref c c-data docutils literal notranslate"><span class="pre">OPP_MIN</span></code>: Global reduction to compute a minimum.</p></li>
+</ul>
+</dd></dl>
+
+<p><strong>For direct arguments</strong></p>
+<dl class="c function">
+<dt class="sig sig-object c" id="c.opp_arg_dat">
+<span class="n"><span class="pre">opp_arg</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">opp_arg_dat</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">opp_dat</span></span><span class="w"> </span><span class="n"><span class="pre">dat</span></span>, <span class="n"><span class="pre">opp_access</span></span><span class="w"> </span><span class="n"><span class="pre">acc</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.opp_arg_dat" title="Link to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<p><strong>For single indirect arguments</strong></p>
+<dl class="c function">
+<dt class="sig sig-object c">
+<span class="n"><span class="pre">opp_arg</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">opp_arg_dat</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">opp_dat</span></span><span class="w"> </span><span class="n"><span class="pre">dat</span></span>, <span class="n"><span class="pre">opp_map</span></span><span class="w"> </span><span class="n"><span class="pre">p2c_map</span></span>, <span class="n"><span class="pre">opp_access</span></span><span class="w"> </span><span class="n"><span class="pre">acc</span></span><span class="sig-paren">)</span><br /></dt>
+<dt class="sig sig-object c">
+<span class="n"><span class="pre">opp_arg</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">opp_arg_dat</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">opp_dat</span></span><span class="w"> </span><span class="n"><span class="pre">dat</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n"><span class="pre">idx</span></span>, <span class="n"><span class="pre">opp_map</span></span><span class="w"> </span><span class="n"><span class="pre">map</span></span>, <span class="n"><span class="pre">opp_access</span></span><span class="w"> </span><span class="n"><span class="pre">acc</span></span><span class="sig-paren">)</span><br /></dt>
+<dd></dd></dl>
+
+<p><strong>For double indirect arguments</strong></p>
+<dl class="c function">
+<dt class="sig sig-object c">
+<span class="n"><span class="pre">opp_arg</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">opp_arg_dat</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">opp_dat</span></span><span class="w"> </span><span class="n"><span class="pre">dat</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n"><span class="pre">idx</span></span>, <span class="n"><span class="pre">opp_map</span></span><span class="w"> </span><span class="n"><span class="pre">map</span></span>, <span class="n"><span class="pre">opp_map</span></span><span class="w"> </span><span class="n"><span class="pre">p2c_map</span></span>, <span class="n"><span class="pre">opp_access</span></span><span class="w"> </span><span class="n"><span class="pre">acc</span></span><span class="sig-paren">)</span><br /></dt>
+<dd><p>This routine defines an <code class="xref c c-type docutils literal notranslate"><span class="pre">opp_arg</span></code> that can be used to pass a dataset either directly attached to the target <code class="xref c c-type docutils literal notranslate"><span class="pre">opp_set</span></code> or attached to an <code class="xref c c-type docutils literal notranslate"><span class="pre">opp_set</span></code> reachable through a mapping.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dat</strong> – The dataset.</p></li>
+<li><p><strong>acc</strong> – The access type.</p></li>
+<li><p><strong>p2c_map</strong> – Map from a particle to underlying cell.</p></li>
+<li><p><strong>idx</strong> – The per-set-element index into the map to use.</p></li>
+<li><p><strong>map</strong> – The mapping to use for indirection.</p></li>
+</ul>
+</dd>
+</dl>
+<p>Valid access types for this routine are:</p>
+<ul class="simple">
+<li><p><code class="xref c c-data docutils literal notranslate"><span class="pre">OPP_READ</span></code>: Read-only.</p></li>
+<li><p><code class="xref c c-data docutils literal notranslate"><span class="pre">OPP_WRITE</span></code>: Write-only.</p></li>
+<li><p><code class="xref c c-data docutils literal notranslate"><span class="pre">OPP_RW</span></code>: Read and write.</p></li>
+<li><p><code class="xref c c-data docutils literal notranslate"><span class="pre">OPP_INC</span></code>: Increment or global reduction to compute a sum.</p></li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>An example of how these API calls are used in an application can be found in the Developer Guide Section.</p>
+</div>
+</dd></dl>
+
+</section>
+<section id="particle-injections">
+<h2>(4) Particle injections<a class="headerlink" href="#particle-injections" title="Link to this heading"></a></h2>
+<dl class="c function">
+<dt class="sig sig-object c" id="c.opp_increase_particle_count">
+<span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">opp_increase_particle_count</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">opp_set</span></span><span class="w"> </span><span class="n"><span class="pre">p_set</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n"><span class="pre">parts_to_insert</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.opp_increase_particle_count" title="Link to this definition"></a><br /></dt>
+<dd><p>This routine will increase the particle set size and capacity by the given amount.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>p_set</strong> – Particle set.</p></li>
+<li><p><strong>parts_to_insert</strong> – Number of particles to insert.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.opp_inc_part_count_with_distribution">
+<span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">opp_inc_part_count_with_distribution</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">opp_set</span></span><span class="w"> </span><span class="n"><span class="pre">p_set</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n"><span class="pre">parts_to_insert</span></span>, <span class="n"><span class="pre">opp_dat</span></span><span class="w"> </span><span class="n"><span class="pre">part_dist</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.opp_inc_part_count_with_distribution" title="Link to this definition"></a><br /></dt>
+<dd><p>This routine will increase the particle set size and capacity by the given amount and assigns <span class="c-expr sig sig-inline c"><span class="n">p2c_map</span></span> using <span class="c-expr sig sig-inline c"><a class="reference internal" href="#c.opp_inc_part_count_with_distribution" title="part_dist"><span class="n">part_dist</span></a></span>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>p_set</strong> – Particle set.</p></li>
+<li><p><strong>parts_to_insert</strong> – Number of particles to insert.</p></li>
+<li><p><strong>part_dist</strong> – Particle distribution <span class="c-expr sig sig-inline c"><span class="n">opp_dat</span></span>.</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>An example of how these API calls are used in an application can be found in the Developer Guide Section.</p>
+</div>
+</dd></dl>
+
+</section>
+<section id="hdf5-i-o">
+<h2>(5) HDF5 I/O<a class="headerlink" href="#hdf5-i-o" title="Link to this heading"></a></h2>
+<p><a class="reference external" href="https://www.hdfgroup.org/solutions/hdf5/">HDF5</a> has become the <em>de facto</em> format for parallel file I/O, with various other standards like <a class="reference external" href="https://cgns.github.io/hdf5.html">CGNS</a> layered on top.
+To make it as easy as possible for users to develop distributed-memory OP-PIC applications, we provide alternatives to some of the OP-PIC routines in which the data is read by OP-PIC from an HDF5 file, instead of being supplied by the user.
+This is particularly useful for distributed memory MPI systems where the user would otherwise have to manually scatter data arrays over nodes prior to initialisation.</p>
+<dl class="c function">
+<dt class="sig sig-object c" id="c.opp_decl_set_hdf5">
+<span class="n"><span class="pre">opp_set</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">opp_decl_set_hdf5</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">file</span></span>, <span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">name</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.opp_decl_set_hdf5" title="Link to this definition"></a><br /></dt>
+<dd><p>Equivalent to <a class="reference internal" href="#c.opp_decl_set" title="opp_decl_set"><code class="xref c c-func docutils literal notranslate"><span class="pre">opp_decl_set()</span></code></a> but takes a <strong>file</strong> instead of <strong>size</strong>, reading in the set size from the HDF5 file using the keyword <strong>name</strong>.</p>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.opp_decl_particle_set_hdf5">
+<span class="n"><span class="pre">opp_set</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">opp_decl_particle_set_hdf5</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">file</span></span>, <span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">name</span></span>, <span class="n"><span class="pre">opp_set</span></span><span class="w"> </span><span class="n"><span class="pre">cells_set</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.opp_decl_particle_set_hdf5" title="Link to this definition"></a><br /></dt>
+<dd><p>Equivalent to <a class="reference internal" href="#c.opp_decl_particle_set" title="opp_decl_particle_set"><code class="xref c c-func docutils literal notranslate"><span class="pre">opp_decl_particle_set()</span></code></a> but takes a <strong>file</strong> instead of <strong>size</strong>, reading in the set size from the HDF5 file using the keyword <strong>name</strong>.</p>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.opp_decl_map_hdf5">
+<span class="n"><span class="pre">opp_map</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">opp_decl_map_hdf5</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">opp_set</span></span><span class="w"> </span><span class="n"><span class="pre">from</span></span>, <span class="n"><span class="pre">opp_set</span></span><span class="w"> </span><span class="n"><span class="pre">to</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n"><span class="pre">dim</span></span>, <span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">file</span></span>, <span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">name</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.opp_decl_map_hdf5" title="Link to this definition"></a><br /></dt>
+<dd><p>Equivalent to <a class="reference internal" href="#c.opp_decl_map" title="opp_decl_map"><code class="xref c c-func docutils literal notranslate"><span class="pre">opp_decl_map()</span></code></a> but takes a <strong>file</strong> instead of <strong>imap</strong>, reading in the mappiing table from the HDF5 file using the keyword <strong>name</strong>.</p>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.opp_decl_dat_hdf5">
+<span class="n"><span class="pre">opp_dat</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">opp_decl_dat_hdf5</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">opp_set</span></span><span class="w"> </span><span class="n"><span class="pre">set</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n"><span class="pre">dim</span></span>, <span class="n"><span class="pre">opp_data_type</span></span><span class="w"> </span><span class="n"><span class="pre">dtype</span></span>, <span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">file</span></span>, <span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">name</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.opp_decl_dat_hdf5" title="Link to this definition"></a><br /></dt>
+<dd><p>Equivalent to <a class="reference internal" href="#c.opp_decl_dat" title="opp_decl_dat"><code class="xref c c-func docutils literal notranslate"><span class="pre">opp_decl_dat()</span></code></a> but takes a <strong>file</strong> instead of <strong>data</strong>, reading in the dataset from the HDF5 file using the keyword <strong>name</strong>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The number of data elements specified by the <strong>dim</strong> parameter must match the number of data elements present in the HDF5 file.</p>
+</div>
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="getting_started.html" class="btn btn-neutral float-left" title="Getting Started" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="developer_guide.html" class="btn btn-neutral float-right" title="Developer Guide" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

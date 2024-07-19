@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Getting Started &mdash; OP-PIC 0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=2709fde1"></script>
+        <script src="_static/doctools.js?v=9a2dae69"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="OP-PIC C++ API" href="api.html" />
+    <link rel="prev" title="Introduction" href="introduction.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            OP-PIC
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#dependencies">Dependencies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#compile-op-pic-library">Compile OP-PIC library</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#setup-translator-python-environment-one-time-process">Setup translator python environment (One time process)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#compile-application">Compile application</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#run-the-application">Run the application</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">OP-PIC C++ API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="developer_guide.html">Developer Guide</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">OP-PIC</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Getting Started</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/getting_started.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="getting-started">
+<h1>Getting Started<a class="headerlink" href="#getting-started" title="Link to this heading"></a></h1>
+<p>OP-PIC is a high-level embedded domain specific language for writing <strong>unstructured mesh particle in cell</strong> simulations with automatic parallelization on multi-core and many-core architectures.</p>
+<p>The parallelizations include, sequential(<code class="docutils literal notranslate"><span class="pre">seq</span></code>), OpenMP(<code class="docutils literal notranslate"><span class="pre">omp</span></code>), MPI(<code class="docutils literal notranslate"><span class="pre">mpi</span></code>), CUDA(<code class="docutils literal notranslate"><span class="pre">cuda</span></code>), HIP(<code class="docutils literal notranslate"><span class="pre">hip</span></code>) and their CUDA+MPI(<code class="docutils literal notranslate"><span class="pre">cuda_mpi</span></code>), HIP+MPI(<code class="docutils literal notranslate"><span class="pre">hip_mpi</span></code>) distributed memory parallelizations, The API is embedded in C/C++.</p>
+<p>This repository contains the implementation of the code translation tools and run-time support libraries, and is structured as follows:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><cite>opp_lib</cite>: The C/C++ OP-PIC run-time libraries.</p></li>
+<li><p><cite>opp_translator</cite>: The Python code translator for C/C++.</p></li>
+<li><p><cite>app_&lt;app_name&gt;</cite>: Example applications that demonstrate use of the API ready to be code-generated.</p></li>
+<li><p><cite>app_&lt;app_name&gt;_cg</cite>: Copy of the example applications that are already being code generated.</p></li>
+<li><p><cite>scripts/source</cite>: Some example source files used during implementation</p></li>
+<li><p><cite>scripts/batch</cite>: Some example slurm batch files used during implementation</p></li>
+<li><p><cite>handcoded</cite>: Some hand-coded application code, written prior code generation</p></li>
+</ul>
+</div></blockquote>
+<section id="dependencies">
+<h2>Dependencies<a class="headerlink" href="#dependencies" title="Link to this heading"></a></h2>
+<p>OP-PIC has a variety of toolchain dependencies that you will likely be able to obtain from your package manager or programming environment:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>GNU Make &gt; 4.2</p></li>
+<li><p>A C/C++ compiler: Currently supported compilers are Intel, GCC, Clang, Cray, and NVHPC.</p></li>
+<li><p>Python &gt;= 3.8</p></li>
+<li><p>(Optional) An MPI implementation: Any implementation with the <code class="docutils literal notranslate"><span class="pre">mpicc</span></code> and <code class="docutils literal notranslate"><span class="pre">mpicxx</span></code> wrappers is supported.</p></li>
+<li><p>(Optional) NVIDIA CUDA &gt;= 10.2.89</p></li>
+<li><p>(Optional) AMD HIP-ROCM &gt;= 5.6.0</p></li>
+</ul>
+</div></blockquote>
+<p>In addition, there are a few optional library dependencies that you will likely have to build manually, although some package managers or programming environments may be able to provide appropriate versions:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>(Optional) <a class="reference external" href="https://www.hdfgroup.org/solutions/hdf5/">HDF5</a> library: Used for HDF5 I/O. You may build with and without <code class="docutils literal notranslate"><span class="pre">--enable-parallel</span></code> (depending on if you need MPI), and then specify via the environment variable <code class="docutils literal notranslate"><span class="pre">HDF5_INSTALL_PATH</span></code>.</p></li>
+<li><p>(Optional) <a class="reference external" href="https://petsc.org/release/install/download/">PETSc</a> library: Used for linear/nonlinear sparse matrix solvers. You may build with and without <code class="docutils literal notranslate"><span class="pre">--with-mpi=1</span></code> (depending on if you need MPI), and then specify via the environment variable <code class="docutils literal notranslate"><span class="pre">PETSC_INSTALL_PATH</span></code>.</p></li>
+<li><p>(Optional) <a class="reference external" href="http://glaros.dtc.umn.edu/gkhome/metis/parmetis/overview">ParMETIS</a> library: Can be used for MPI mesh partitioning. Build <em>with</em> 32-bit indicies (<code class="docutils literal notranslate"><span class="pre">-DIDXSIZE32</span></code>) and <em>without</em> <code class="docutils literal notranslate"><span class="pre">-DSCOTCH_PTHREAD</span></code>. Specify ParMETIS via the environment variable <code class="docutils literal notranslate"><span class="pre">PARMETIS_INSTALL_PATH</span></code>.</p></li>
+</ul>
+</div></blockquote>
+</section>
+<section id="compile-op-pic-library">
+<h2>Compile OP-PIC library<a class="headerlink" href="#compile-op-pic-library" title="Link to this heading"></a></h2>
+<blockquote>
+<div><ul class="simple">
+<li><p>Source the compiler and other environment variables (some example source files can be found at <code class="docutils literal notranslate"><span class="pre">OP-PIC/scripts/source</span></code> directory).</p></li>
+<li><p>Change directory to <code class="docutils literal notranslate"><span class="pre">OP-PIC/opp_lib</span></code>.</p></li>
+<li><p>Compile the required platform specific backend library using make commands (e.g. <code class="docutils literal notranslate"><span class="pre">make</span> <span class="pre">cuda_mpi</span></code>).</p></li>
+</ul>
+</div></blockquote>
+</section>
+<section id="setup-translator-python-environment-one-time-process">
+<h2>Setup translator python environment (One time process)<a class="headerlink" href="#setup-translator-python-environment-one-time-process" title="Link to this heading"></a></h2>
+<blockquote>
+<div><ul class="simple">
+<li><p>Change directory to <code class="docutils literal notranslate"><span class="pre">OP-PIC/opp_translator</span></code>.</p></li>
+<li><p>Run <code class="docutils literal notranslate"><span class="pre">setup_venv.sh</span></code> (this will download the required libraries, including libclang and create the <code class="docutils literal notranslate"><span class="pre">opp_venv</span></code> python environment).</p></li>
+</ul>
+</div></blockquote>
+</section>
+<section id="compile-application">
+<h2>Compile application<a class="headerlink" href="#compile-application" title="Link to this heading"></a></h2>
+<blockquote>
+<div><ul class="simple">
+<li><p>Change directory to the required demonstrator application folder (the applications ready to code-generate will have the name in  format <code class="docutils literal notranslate"><span class="pre">app_&lt;app_name&gt;</span></code>).</p></li>
+<li><p>Run <code class="docutils literal notranslate"><span class="pre">python3</span> <span class="pre">$OPP_TRANSLATOR</span> <span class="pre">-v</span> <span class="pre">-I$OPP_PATH/include/</span> <span class="pre">--file_paths</span> <span class="pre">&lt;application_cpp_file&gt;</span></code>.</p></li>
+<li><p>Compile the required application version using the make command. (<cite>make</cite> followed by the required parallelization).</p></li>
+</ul>
+</div></blockquote>
+<p>For example,</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>app_cabanapic<span class="p">;</span><span class="w"> </span>python3<span class="w"> </span><span class="nv">$OPP_TRANSLATOR</span><span class="w"> </span>-v<span class="w"> </span>-I<span class="nv">$OPP_PATH</span>/include/<span class="w"> </span>--file_paths<span class="w"> </span>cabanapic.cpp<span class="p">;</span><span class="w"> </span>make<span class="w"> </span>cuda_mpi
+</pre></div>
+</div>
+<p>A detail explanation can be found in the readme file of opp_translator folder and the required application folder.</p>
+<p>In addition, <code class="docutils literal notranslate"><span class="pre">app_&lt;app_name&gt;_cg</span></code> will additionally include code-generated files, ready to compile directly using make commands.</p>
+</section>
+<section id="run-the-application">
+<h2>Run the application<a class="headerlink" href="#run-the-application" title="Link to this heading"></a></h2>
+<p>To run the application, use <code class="docutils literal notranslate"><span class="pre">bin/&lt;parallelization&gt;</span> <span class="pre">&lt;config_file&gt;</span></code>.</p>
+<p>For example, <code class="docutils literal notranslate"><span class="pre">bin/hip</span> <span class="pre">configs/cabana.params</span></code>.</p>
+<p>For distributed memory MPI builds use <code class="docutils literal notranslate"><span class="pre">mpirun</span></code>, or <code class="docutils literal notranslate"><span class="pre">srun</span></code> for slurm runs. Some example slurm scripts can be found at <code class="docutils literal notranslate"><span class="pre">batch/app_&lt;app_name&gt;</span></code> folder.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="introduction.html" class="btn btn-neutral float-left" title="Introduction" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="api.html" class="btn btn-neutral float-right" title="OP-PIC C++ API" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

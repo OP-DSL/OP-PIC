@@ -1,10 +1,10 @@
 # Simulation parameters
-INT num_steps = 100
+INT num_steps = 500
 REAL init_vel = 0.0866025403784439
 INT num_part_per_cell = 750
 INT nx = 40
 INT ny = 40
-INT nz = 30
+INT nz = 60
 REAL c = 1.0
 REAL qsp = -1.0
 REAL me = 1.0
@@ -31,3 +31,9 @@ BOOL opp_global_move = false
 BOOL use_reg_red = false
 
 STRING hdf_filename = /home/zl/phd/neso_test/OP-PIC_Configs/cabana/mesh_files/cab_48000.hdf5
+INT domain_expansion = 1
+
+# 1 0 0 is the CabanaPIC original configuration
+REAL velX_mult_const = 1
+REAL velY_mult_const = 0.00
+REAL velZ_mult_const = 0.00

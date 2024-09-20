@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 from util import flatten, uniqueBy
+from clang.cindex import Cursor, CursorKind, SourceRange
 
 # import ops
 import op as OP
@@ -144,6 +145,18 @@ class Program:
         #     print(loop)          
         # for loop in self.maps:
         #     print(loop) 
+
+        # updating the loop with the consts accessed within the kernel
+        for loop in self.loops:
+            entities = self.findEntities(loop.kernel, [])
+            # TODO : Use depencies as well
+            for entity in entities:
+                for node in entity.ast.walk_preorder():
+                    if node.kind != CursorKind.DECL_REF_EXPR:
+                        continue
+                    const_id = findIdx(self.consts, lambda d: d.ptr == node.spelling)
+                    if const_id is not None:
+                        loop.addConst(self.consts[const_id])
         for loop in self.loops:
             for arg in loop.args:
                 if isinstance(arg, OP.ArgDat):

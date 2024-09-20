@@ -29,3 +29,10 @@ INT opp_fill_period = 4
 
 BOOL opp_global_move = false
 BOOL use_reg_red = false
+
+INT domain_expansion = -1
+
+# 1 0 0 is the CabanaPIC original configuration
+REAL velX_mult_const = 1
+REAL velY_mult_const = 0.0
+REAL velZ_mult_const = 0.0

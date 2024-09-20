@@ -44,9 +44,6 @@ def translateProgram(source: str, program: Program, force_soa: bool) -> str:
 
     # 2. Update loop calls
     for loop in program.loops:
-
-        print(f'loop {loop.kernel}')
-
         if loop.loop_type == OP.LoopType.PAR_LOOP:
             before, after = buffer.get(loop.loc.line - lines_removed - 1).split("opp_par_loop", 1)
             after = re.sub(

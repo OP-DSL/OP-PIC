@@ -64,6 +64,8 @@ size_t OPP_gpu_shared_mem_per_block = 0;
 int *OPP_mesh_relation_data         = nullptr;
 int *OPP_mesh_relation_data_d       = nullptr;
 int OPP_part_cells_set_size         = 0;
+int OPP_part_comm_count_per_iter    = 0;
+int OPP_move_max_hops               = -1;
 
 std::unique_ptr<opp::Params> opp_params;
 std::unique_ptr<opp::Profiler> opp_profiler;
@@ -318,6 +320,7 @@ opp_dat opp_decl_dat_core(opp_set set, int dim, char const *type, int size, char
     }
 
     dat->data_d        = NULL;
+    dat->data_swap_d   = NULL;
     dat->name          = copy_str(name);
     dat->type          = copy_str(type);
     dat->size          = dim * size;
@@ -1340,6 +1343,32 @@ BoundingBox::BoundingBox(const opp_dat node_pos_dat, int dim) :
     const int node_count = node_pos_dat->set->size + node_pos_dat->set->exec_size + 
                                 node_pos_dat->set->nonexec_size;;
 
+{
+    opp_point minCoordinate = opp_point(MAX_REAL, MAX_REAL, MAX_REAL);
+    opp_point maxCoordinate = opp_point(MIN_REAL, MIN_REAL, MIN_REAL);
+
+    if (dim == 2) {
+        minCoordinate.z = 0;
+        maxCoordinate.z = 0;
+    }
+
+    // make the bounding box even over the halo regions
+    for (int i = 0; i < node_pos_dat->set->size; i++) {
+        minCoordinate.x = std::min(node_pos_data[i * dim + 0], minCoordinate.x);
+        maxCoordinate.x = std::max(node_pos_data[i * dim + 0], maxCoordinate.x);
+        minCoordinate.y = std::min(node_pos_data[i * dim + 1], minCoordinate.y);
+        maxCoordinate.y = std::max(node_pos_data[i * dim + 1], maxCoordinate.y);
+        if (dim == 3) {
+            minCoordinate.z = std::min(node_pos_data[i * dim + 2], minCoordinate.z);
+            maxCoordinate.z = std::max(node_pos_data[i * dim + 2], maxCoordinate.z);
+        }
+    }
+
+        opp_printf("Local BoundingBox [computed]", "Min[%2.6lE %2.6lE %2.6lE] Max[%2.6lE %2.6lE %2.6lE]", 
+            minCoordinate.x, minCoordinate.y, minCoordinate.z, 
+            minCoordinate.x, minCoordinate.y, minCoordinate.z);
+}
+
     opp_point minCoordinate = opp_point(MAX_REAL, MAX_REAL, MAX_REAL);
     opp_point maxCoordinate = opp_point(MIN_REAL, MIN_REAL, MIN_REAL);
 
@@ -1405,6 +1434,10 @@ void BoundingBox::generateGlobalBoundingBox(int count) {
         this->boundingBox[1].y = this->globalBoundingBox[0].y;
         this->boundingBox[1].z = this->globalBoundingBox[0].z;
     }
+
+    opp_printf("Local BoundingBox", "Min[%2.6lE %2.6lE %2.6lE] Max[%2.6lE %2.6lE %2.6lE]", 
+        this->boundingBox[0].x, this->boundingBox[0].y, this->boundingBox[0].z, 
+        this->boundingBox[1].x, this->boundingBox[1].y, this->boundingBox[1].z);
 
     if (OPP_rank == OPP_ROOT)
         opp_printf("Global BoundingBox", "Min[%2.6lE %2.6lE %2.6lE] Max[%2.6lE %2.6lE %2.6lE]", 

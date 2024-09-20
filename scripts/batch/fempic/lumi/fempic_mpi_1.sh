@@ -52,15 +52,15 @@ echo "Git commit " $gitcommit
 echo "********************************************************"
 cd -
 
-hdfOriginalFolder=/users/lantraza/phd/box_mesh_gen/hdf5
+hdfOriginalFolder=/project/project_465001068/box_mesh_gen/hdf5
 num_nodes=$SLURM_JOB_NUM_NODES
 
 configFile="box_fempic.param"
 file=$PWD'/'$configFile
 
-for run in 1 2 3 4; do
+for run in 1 2 3; do
     for gpus in 1; do
-        for config in 24000 48000; do
+        for config in 24000 48000 96000; do
             
             folder=$runFolder/$config"_mpi"
             totalGPUs=$((gpus*SLURM_JOB_NUM_NODES))
@@ -102,9 +102,9 @@ for run in 1 2 3 4; do
     done
 done
 
-for run in 1 2 3 4; do
+for run in 1 2 3; do
     for gpus in 2; do
-        for config in 48000 96000; do
+        for config in 48000 96000 192000; do
             
             folder=$runFolder/$config"_mpi"
             totalGPUs=$((gpus*SLURM_JOB_NUM_NODES))
@@ -146,9 +146,9 @@ for run in 1 2 3 4; do
     done
 done
 
-for run in 1 2 3 4; do
+for run in 1 2 3; do
     for gpus in 4; do
-        for config in 96000 192000; do
+        for config in 96000 192000 384000; do
             
             folder=$runFolder/$config"_mpi"
             totalGPUs=$((gpus*SLURM_JOB_NUM_NODES))
@@ -190,9 +190,9 @@ for run in 1 2 3 4; do
     done
 done
 
-for run in 1 2 3 4; do
+for run in 1 2 3; do
     for gpus in 8; do
-        for config in 192000 384000; do
+        for config in 192000 384000 768000; do
             
             folder=$runFolder/$config"_mpi"
             totalGPUs=$((gpus*SLURM_JOB_NUM_NODES))

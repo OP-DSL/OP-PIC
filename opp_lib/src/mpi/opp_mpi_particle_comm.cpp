@@ -308,18 +308,23 @@ void opp_part_exchange(opp_set set)
 
     opp_profiler->startMpiComm("", opp::OPP_Particle);
 
+    const int count_ex_tag = OPP_main_loop_iter * 10 + OPP_comm_iteration;
+    const int part_ex_tag = 100000 + OPP_main_loop_iter * 10 + OPP_comm_iteration;
+
     // send/receive send_counts to/from only to neighbours
     for (int i = 0; i < neighbour_count; i++)
     {
         const int neighbour_rank = neighbours[i];
 
         const int64_t& send_count = mpi_part_data->export_counts[neighbour_rank];
-        MPI_Isend((void*)&send_count, 1, MPI_INT64_T, neighbour_rank, MPI_MH_COUNT_EXCHANGE, 
+        MPI_Isend((void*)&send_count, 1, MPI_INT64_T, neighbour_rank, count_ex_tag, // MPI_MH_COUNT_EXCHANGE, 
                     OPP_MPI_WORLD, &(send_count_reqs[i]));
 
         const int64_t& recv_count = mpi_part_data->import_counts[neighbour_rank];
-        MPI_Irecv((void*)&recv_count, 1, MPI_INT64_T, neighbour_rank, MPI_MH_COUNT_EXCHANGE, 
+        MPI_Irecv((void*)&recv_count, 1, MPI_INT64_T, neighbour_rank, count_ex_tag, // MPI_MH_COUNT_EXCHANGE, 
                     OPP_MPI_WORLD, &(recv_count_reqs[i]));
+        
+        // opp_printf("Exchange", "%d->%d Send %" PRId64 " particles", OPP_rank, neighbour_rank, send_count);
     }
 
     double total_send_bytes = 0.0;
@@ -345,7 +350,7 @@ void opp_part_exchange(opp_set set)
         char* send_rank_buffer = mpi_part_data->buffers[neighbour_rank].buf_export;
 
         MPI_Request req;
-        MPI_Isend(send_rank_buffer, send_bytes, MPI_CHAR, neighbour_rank, MPI_MH_TAG_PART_EX, OPP_MPI_WORLD, &req);
+        MPI_Isend(send_rank_buffer, send_bytes, MPI_CHAR, neighbour_rank, part_ex_tag, OPP_MPI_WORLD, &req);
         mpi_part_data->send_req.push_back(req); 
     }
 
@@ -355,7 +360,25 @@ void opp_part_exchange(opp_set set)
     // wait for the counts to receive only from neighbours
     const std::string profName = std::string("Mv_WaitExCnt") + std::to_string(OPP_comm_iteration);
     opp_profiler->start(profName);
-    MPI_Waitall(neighbour_count, &recv_count_reqs[0], MPI_STATUSES_IGNORE); 
+    std::vector<MPI_Status> send_req_statuses(neighbour_count);
+    std::vector<MPI_Status> recv_req_statuses(neighbour_count);
+    MPI_Waitall(neighbour_count, &send_count_reqs[0], send_req_statuses.data());
+    MPI_Waitall(neighbour_count, &recv_count_reqs[0], recv_req_statuses.data()); 
+    bool error = false;
+    for (size_t i = 0; i < send_req_statuses.size(); ++i) {
+        if (send_req_statuses[i].MPI_ERROR != MPI_SUCCESS) {
+            opp_printf("opp_part_exchange Recv", "Error in send request ", i, send_req_statuses[i].MPI_ERROR);
+            error = true;
+        }
+    }
+    for (size_t i = 0; i < recv_req_statuses.size(); ++i) {
+        if (recv_req_statuses[i].MPI_ERROR != MPI_SUCCESS) {
+            opp_printf("opp_part_exchange Recv", "Error in recv request ", i, recv_req_statuses[i].MPI_ERROR);
+            error = true;
+        }
+    }
+    if (error)
+        opp_abort("Error in opp_part_exchange");
     opp_profiler->end(profName);
 
     opp_profiler->start("Mv_Exchange");
@@ -394,7 +417,7 @@ void opp_part_exchange(opp_set set)
         //     neighbour_rank, recv_bytes, mpi_part_data->total_recv, recv_buffer.buf_import_capacity);
 
         MPI_Request req;
-        MPI_Irecv(recv_buffer.buf_import, recv_bytes, MPI_CHAR, neighbour_rank, MPI_MH_TAG_PART_EX, OPP_MPI_WORLD, &req);
+        MPI_Irecv(recv_buffer.buf_import, recv_bytes, MPI_CHAR, neighbour_rank, part_ex_tag, OPP_MPI_WORLD, &req);
         mpi_part_data->recv_req.push_back(req);
     }
 
@@ -431,9 +454,29 @@ void opp_part_wait_all(opp_set set)
     // wait till all the particles from all the ranks are received
     std::string profName = std::string("Mv_WaitExRecv") + std::to_string(OPP_comm_iteration);
     opp_profiler->start(profName);
-    MPI_Waitall(send_req.size(), &(send_req[0]), MPI_STATUSES_IGNORE);
-    MPI_Waitall(recv_req.size(), &(recv_req[0]), MPI_STATUSES_IGNORE);
+
+    std::vector<MPI_Status> send_req_statuses(send_req.size());
+    std::vector<MPI_Status> recv_req_statuses(recv_req.size());
+
+    MPI_Waitall(send_req.size(), &(send_req[0]), send_req_statuses.data());
+    MPI_Waitall(recv_req.size(), &(recv_req[0]), recv_req_statuses.data());
     opp_profiler->end(profName);
+
+    bool error = false;
+    for (size_t i = 0; i < send_req_statuses.size(); ++i) {
+        if (send_req_statuses[i].MPI_ERROR != MPI_SUCCESS) {
+            opp_printf("opp_part_wait_all", "Error in send request ", i, send_req_statuses[i].MPI_ERROR);
+            error = true;
+        }
+    }
+    for (size_t i = 0; i < recv_req_statuses.size(); ++i) {
+        if (recv_req_statuses[i].MPI_ERROR != MPI_SUCCESS) {
+            opp_printf("opp_part_wait_all", "Error in recv request ", i, recv_req_statuses[i].MPI_ERROR);
+            error = true;
+        }
+    }
+    if (error)
+        opp_abort("Error in opp_part_wait_all");
 
     opp_profiler->endMpiComm("", opp::OPP_Particle); // started at opp_part_exchange()
 
@@ -480,7 +523,7 @@ bool opp_part_check_all_done(opp_set set)
         bool_ret = (bool_ret || buffer_recv[i]);
 
         if (OPP_DBG) 
-            log += std::string(" R") + std::to_string(i) + (buffer_recv[i] ? "-T" : "-F");
+            log += std::string(" ") + std::to_string(i) + (buffer_recv[i] ? "A" : "D");
     }
 
     if (OPP_DBG) 
@@ -530,17 +573,21 @@ void opp_part_comm_init()
 void opp_part_set_comm_init(opp_set set)
 {
     // TODO : can use the same mappings for all particle sets with the same cells set, instead of communicating again
-
-    if (OPP_DBG) opp_printf("opp_part_set_comm_init", "set: %s", set->name);
-
     const halo_list exp_exec_list = OPP_export_exec_list[set->cells_set->index];
     const halo_list imp_exec_list = OPP_import_exec_list[set->cells_set->index];
 
+    const size_t exp_exec_rank_count = (size_t)(exp_exec_list->ranks_size);
+    const size_t imp_exec_rank_count = (size_t)(imp_exec_list->ranks_size);
+
+    if (OPP_DBG) opp_printf("opp_part_set_comm_init", "set: %s exp_exec_ranks:%zu imp_exec_ranks:%zu", 
+                    set->name, exp_exec_rank_count, imp_exec_rank_count);
+
     std::vector<MPI_Request> send_reqs;
     std::vector<MPI_Request> recv_reqs;    
+    std::vector<std::vector<int>> recv_buffers(imp_exec_rank_count);
 
     // send the local index of the export elements of the set to all neighbours
-    for (int i = 0; i < exp_exec_list->ranks_size; i++) 
+    for (size_t i = 0; i < exp_exec_rank_count; i++) 
     {  
         const int neighbour_rank = exp_exec_list->ranks[i];
         const int* send_buffer = &(exp_exec_list->list[exp_exec_list->disps[i]]);
@@ -561,11 +608,10 @@ void opp_part_set_comm_init(opp_set set)
         } 
     }
 
-    std::vector<std::vector<int>> recv_buffers(imp_exec_list->ranks_size);
-
     // receive the foreign ranks local index of the import elements of the set from all neighbours
-    for (int i = 0; i < imp_exec_list->ranks_size; i++) 
+    for (size_t i = 0; i < imp_exec_rank_count; i++) 
     {
+        // opp_printf("opp_part_set_comm_init", "imp_exec_rank_count: %zu %zu", imp_exec_rank_count, i);
         const int neighbour_rank = imp_exec_list->ranks[i];
         const int recv_size = imp_exec_list->sizes[i];
         
@@ -577,18 +623,28 @@ void opp_part_set_comm_init(opp_set set)
         recv_reqs.push_back(req);  
     }
 
-    MPI_Waitall(recv_reqs.size(), &recv_reqs[0], MPI_STATUSES_IGNORE);
-    
+    std::vector<MPI_Status> recv_reqs_statuses(recv_reqs.size());
+    MPI_Waitall(recv_reqs.size(), &recv_reqs[0], recv_reqs_statuses.data());
+    bool error = false;
+    for (size_t i = 0; i < recv_reqs_statuses.size(); ++i) {
+        if (recv_reqs_statuses[i].MPI_ERROR != MPI_SUCCESS) {
+            opp_printf("opp_part_set_comm_init", "Error in recv request ", i, recv_reqs_statuses[i].MPI_ERROR);
+            error = true;
+        }
+    }
+    if (error)
+        opp_abort("Error in opp_part_set_comm_init");
+
     // print the per rank received buffers
     if (OPP_DBG)
     {
-        for (int i = 0; i < (int)recv_buffers.size(); i++) 
+        for (size_t i = 0; i < recv_buffers.size(); i++) 
         {
             // what I have (mappings) in import exec buffers, mappings before renumbering from that rank
             const int* imp_buffer = &(imp_exec_list->list[imp_exec_list->disps[i]]); 
 
             std::string log = "";
-            for (int k = 0; k < (int)recv_buffers[i].size(); k++)
+            for (size_t k = 0; k < recv_buffers[i].size(); k++)
                 log += std::to_string((recv_buffers[i])[k]) + "|" + std::to_string(imp_buffer[k]) + " ";  
 
             opp_printf("opp_part_set_comm_init", "%s RECEIVE neighbour_rank %d recv_size %d (new|old) -> %s", 
@@ -598,7 +654,7 @@ void opp_part_set_comm_init(opp_set set)
 
     if (true) // TODO : this might break existing OP2 functionality, check for issues
     { 
-        for (int i = 0; i < (int)recv_buffers.size(); i++) 
+        for (size_t i = 0; i < recv_buffers.size(); i++) 
         {
             int* imp_buffer = &(imp_exec_list->list[imp_exec_list->disps[i]]); 
             
@@ -608,7 +664,7 @@ void opp_part_set_comm_init(opp_set set)
     }
 
     // create mappings of neighbour ranks cell information for easy access during particle communication
-    for (int i = 0; i < imp_exec_list->ranks_size; i++) 
+    for (size_t i = 0; i < imp_exec_rank_count; i++) 
     {
         const int neighbour_rank = imp_exec_list->ranks[i];
         const std::vector<int>& neighbour_rank_local_idxs = recv_buffers[i];
@@ -634,7 +690,7 @@ void opp_part_set_comm_init(opp_set set)
     mpi_buffers->send_req.clear();
     mpi_buffers->recv_req.clear();
 
-    for (int i = 0; i < imp_exec_list->ranks_size; i++) 
+    for (size_t i = 0; i < imp_exec_rank_count; i++) 
     {
         const int neighbour_rank = imp_exec_list->ranks[i];
 
@@ -647,7 +703,7 @@ void opp_part_set_comm_init(opp_set set)
         part_buffer.buf_import_index     = 0;
     }
 
-    for (int i = 0; i < exp_exec_list->ranks_size; i++) 
+    for (size_t i = 0; i < exp_exec_rank_count; i++) 
     {
         const int neighbour_rank = exp_exec_list->ranks[i];
 

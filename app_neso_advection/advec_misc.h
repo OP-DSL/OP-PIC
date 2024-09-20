@@ -257,13 +257,34 @@ void distribute_data_over_ranks(std::shared_ptr<DataPointers>& g_m, std::shared_
 /*************************************************************************************************
  * This is a utility function to get the total particles iterated during the simulation
 */
-inline int64_t get_global_parts_iterated(int64_t total_part_iter) {
+inline void get_global_values(const int64_t total_part_iter, int64_t& gbl_total_part_iter, 
+    int64_t& gbl_max_iter, int64_t& gbl_min_iter) {
 
-    int64_t gbl_total_part_iter = 0;
 #ifdef USE_MPI
         MPI_Reduce(&total_part_iter, &gbl_total_part_iter, 1, MPI_INT64_T, MPI_SUM, OPP_ROOT, MPI_COMM_WORLD);
+        MPI_Reduce(&total_part_iter, &gbl_max_iter, 1, MPI_INT64_T, MPI_MAX, 0, MPI_COMM_WORLD);
+        MPI_Reduce(&total_part_iter, &gbl_min_iter, 1, MPI_INT64_T, MPI_MIN, 0, MPI_COMM_WORLD);
 #else
         gbl_total_part_iter = total_part_iter;
+        gbl_max_iter = total_part_iter;
+        gbl_min_iter = total_part_iter;
 #endif
-    return gbl_total_part_iter;
+}
+
+/***************************************************************************************************
+ * @brief This uses block colouring to colour the cell dats according to global index
+ * @param cell_index - cell index dat of the current rank, this includes the global cell indices
+ * @param cell_colors - cell colours to be enriched for partitioning
+ * @return (void)
+ */
+inline void advec_color_block(const opp_dat cell_index, opp_dat cell_colors) 
+{
+#ifdef USE_MPI
+    // used global id of cell and assign the color to the correct MPI rank
+    // const OPP_INT* gcid = ((OPP_INT*)cell_index->data);
+    for (OPP_INT i = 0; i < cell_index->set->size; i++)
+    {
+        ((OPP_INT*)cell_colors->data)[i] = OPP_rank; 
+    }
+#endif
 }

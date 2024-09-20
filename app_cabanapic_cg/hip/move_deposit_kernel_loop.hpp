@@ -19,11 +19,50 @@ __constant__ OPP_INT opp_k2_dat4_stride_d;
 __constant__ OPP_INT opp_k2_dat5_stride_d;
 __constant__ OPP_INT opp_k2_c2c_map_stride_d;
 
+// Segmented Reductions Structures 
+// --------------------------------------------------------------
+OPP_INT opp_k2_sr_set_stride = -1;
+__constant__ OPP_INT opp_k2_sr_set_stride_d;
+
+thrust::device_vector<OPP_INT> sr_dat5_keys_dv;
+thrust::device_vector<OPP_REAL> sr_dat5_values_dv;
+
+thrust::device_vector<OPP_INT> sr_dat5_keys_dv2;
+thrust::device_vector<OPP_REAL> sr_dat5_values_dv2;
+// --------------------------------------------------------------
+
 namespace opp_k2 {
 enum CellAcc {
     jfx = 0 * 4,
     jfy = 1 * 4,
     jfz = 2 * 4,
+};
+
+enum CellInterp {
+    ex = 0,
+    dexdy,
+    dexdz,
+    d2exdydz,
+    ey,
+    deydz,
+    deydx,
+    d2eydzdx,
+    ez,
+    dezdx,
+    dezdy,
+    d2ezdxdy,
+    cbx,
+    dcbxdx,
+    cby,
+    dcbydy,
+    cbz,
+    dcbzdz,
+};
+
+enum Dim {
+    x = 0,
+    y = 1,
+    z = 2,
 };
 
 __device__ inline void weight_current_to_accumulator_kernel(
@@ -54,33 +93,6 @@ __device__ inline void weight_current_to_accumulator_kernel(
     cell_acc[CellAcc::jfz + 2] += v2;
     cell_acc[CellAcc::jfz + 3] += v3;
 }
-
-enum Dim {
-    x = 0,
-    y = 1,
-    z = 2,
-};
-
-enum CellInterp {
-    ex = 0,
-    dexdy,
-    dexdz,
-    d2exdydz,
-    ey,
-    deydz,
-    deydx,
-    d2eydzdx,
-    ez,
-    dezdx,
-    dezdy,
-    d2ezdxdy,
-    cbx,
-    dcbxdx,
-    cby,
-    dcbydy,
-    cbz,
-    dcbzdz,
-};
 
 __device__ inline void move_deposit_kernel(
     char& opp_move_status_flag, const bool opp_move_hop_iter_one_flag, // Added by code-gen
@@ -339,6 +351,92 @@ __device__ inline bool opp_part_check_status_hip(char& move_flag, bool& iter_one
     // cell_id is an own cell and move_flag == OPP_NEED_MOVE
     return true;
 }
+
+// Segmented Reductions Routines 
+// --------------------------------------------------------------
+__global__ void assign_values( // Used for 
+    const OPP_INT *__restrict keys,
+    const OPP_REAL *__restrict values,
+    OPP_REAL *__restrict dat,
+    const int start,
+    const int end) 
+{
+    const int tid = threadIdx.x + blockIdx.x * blockDim.x;
+
+    if (tid + start < end) 
+    {
+        const int n = tid + start;
+        const int mapping = keys[n];  
+        dat[mapping] += values[n];
+    }
+}
+
+//--------------------------------------------------------------
+__global__ void sequence_OPP_INT_values( 
+    OPP_INT *__restrict values,
+    const int start,
+    const int end) 
+{
+    const int tid = threadIdx.x + blockIdx.x * blockDim.x;
+
+    if (tid + start < end) 
+    {
+        const int n = tid + start;
+        values[n] = n; 
+    }
+}
+
+//--------------------------------------------------------------
+__global__ void reset_OPP_INT_values( 
+    OPP_INT *__restrict values,
+    const int start,
+    const int end) 
+{
+    const int tid = threadIdx.x + blockIdx.x * blockDim.x;
+
+    if (tid + start < end) 
+    {
+        const int n = tid + start;
+        values[n] = 0; 
+    }
+}
+
+//--------------------------------------------------------------
+__global__ void reset_OPP_REAL_values( 
+    OPP_REAL *__restrict values,
+    const int start,
+    const int end) 
+{
+    const int tid = threadIdx.x + blockIdx.x * blockDim.x;
+
+    if (tid + start < end) 
+    {
+        const int n = tid + start;
+        values[n] = 0.0; 
+    }
+}
+
+//--------------------------------------------------------------
+__global__ void assign_values_by_key( 
+    const OPP_INT *__restrict indices,
+    const OPP_REAL *__restrict values_in,
+    OPP_REAL *__restrict values_out,
+    const int start,
+    const int end) 
+{
+    const int tid = threadIdx.x + blockIdx.x * blockDim.x;
+
+    if (tid + start < end) 
+    {
+        const int n = tid + start;
+        const int idx = indices[n];
+
+        for (int d = 0; d < 12; d++) {
+            values_out[n + d * opp_k2_sr_set_stride_d] = values_in[idx + d * opp_k2_sr_set_stride_d];
+        }
+    }
+}
+
 }
 
 __global__ void opp_dev_move_deposit_kernel(
@@ -392,6 +490,81 @@ __global__ void opp_dev_move_deposit_kernel(
 
             for (int d = 0; d < 12; ++d)
                 atomicAdd(dat5 + p2c + (d * opp_k2_dat5_stride_d), arg5_p2c_local[d]);
+        
+        } while (opp_k2::opp_part_check_status_hip(move_flag, iter_one_flag, opp_p2c, n, 
+            *particle_remove_count, particle_remove_indices, move_particle_indices, 
+            move_cell_indices, move_count));        
+    }
+}
+
+__global__ void opp_dev_sr_move_deposit_kernel(
+    OPP_REAL *__restrict__ dat0,     // p_vel
+    OPP_REAL *__restrict__ dat1,     // p_pos
+    OPP_REAL *__restrict__ dat2,     // p_streak_mid
+    const OPP_REAL *__restrict__ dat3,     // p_weight
+    const OPP_REAL *__restrict__ dat4,     // c_interp
+    OPP_REAL *__restrict__ dat5,     // c_acc
+    OPP_INT *__restrict__ p2c_map,
+    const OPP_INT *__restrict__ c2c_map,
+    OPP_INT *__restrict__ particle_remove_count,
+    OPP_INT *__restrict__ particle_remove_indices,
+    OPP_INT *__restrict__ move_particle_indices,
+    OPP_INT *__restrict__ move_cell_indices,
+    OPP_INT *__restrict__ move_count,
+    OPP_REAL *__restrict__ sr_dat5_values,     // c_acc
+    OPP_INT *__restrict__ sr_dat5_keys,     // c_acc
+    const OPP_INT start,
+    const OPP_INT end
+) 
+{
+    const int thread_id = threadIdx.x + blockIdx.x * blockDim.x;
+
+    if (thread_id + start < end) {
+
+        const int n = thread_id + start;
+
+        OPP_INT *opp_p2c = (p2c_map + n);
+        char move_flag = OPP_NEED_MOVE;
+        bool iter_one_flag = (OPP_comm_iteration_d > 0) ? false : true;
+
+        OPP_REAL arg5_p2c_local[12];
+
+        bool on_old_cell = true;
+
+        do
+        {
+            const OPP_INT p2c = opp_p2c[0]; // get the value here, since the kernel might change it
+            const OPP_INT* opp_c2c = c2c_map + p2c;           
+
+            for (int d = 0; d < 12; ++d)
+                arg5_p2c_local[d] = OPP_REAL_ZERO;
+
+            opp_k2::move_deposit_kernel(
+                move_flag, iter_one_flag, opp_c2c, opp_p2c,
+                dat0 + n, // p_vel 
+                dat1 + n, // p_pos 
+                dat2 + n, // p_streak_mid 
+                dat3 + n, // p_weight 
+                dat4 + p2c, // c_interp 
+                arg5_p2c_local // c_acc 
+          
+            );
+
+            if (on_old_cell)
+            {
+                int offset = 0;
+                for (int d = 0; d < 12; ++d, ++offset) {
+                    sr_dat5_values[n + opp_k2_sr_set_stride_d * offset] = arg5_p2c_local[d];              
+                }
+                sr_dat5_keys[n] = p2c; // TODO : Generate for double indirections too!
+            }
+            else
+            {
+                for (int d = 0; d < 12; ++d)
+                    atomicAdd(dat5 + p2c + (d * opp_k2_dat5_stride_d), arg5_p2c_local[d]);
+            }
+
+            on_old_cell = false;
         
         } while (opp_k2::opp_part_check_status_hip(move_flag, iter_one_flag, opp_p2c, n, 
             *particle_remove_count, particle_remove_indices, move_particle_indices, 
@@ -477,23 +650,144 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
 
         num_blocks = (OPP_iter_end - OPP_iter_start - 1) / block_size + 1;
 
-        opp_dev_move_deposit_kernel<<<num_blocks, block_size>>>(
-            (OPP_REAL *)args[0].data_d,    // p_vel
-            (OPP_REAL *)args[1].data_d,    // p_pos
-            (OPP_REAL *)args[2].data_d,    // p_streak_mid
-            (OPP_REAL *)args[3].data_d,    // p_weight
-            (OPP_REAL *)args[4].data_d,    // c_interp
-            (OPP_REAL *)args[5].data_d,    // c_acc
-            (OPP_INT *)args[6].data_d,    // p2c_map
-            (OPP_INT *)c2c_map->map_d,    // c2c_map
-            (OPP_INT *)set->particle_remove_count_d,
-            (OPP_INT *)OPP_remove_particle_indices_d,
-            (OPP_INT *)OPP_move_particle_indices_d,
-            (OPP_INT *)OPP_move_cell_indices_d,
-            (OPP_INT *)OPP_move_count_d,
-            OPP_iter_start,
-            OPP_iter_end
-        );
+        if (!opp_params->get<OPP_BOOL>("use_reg_red")) // Do atomics ----------       
+        {
+            opp_dev_move_deposit_kernel<<<num_blocks, block_size>>>(
+                (OPP_REAL *)args[0].data_d,    // p_vel
+                (OPP_REAL *)args[1].data_d,    // p_pos
+                (OPP_REAL *)args[2].data_d,    // p_streak_mid
+                (OPP_REAL *)args[3].data_d,    // p_weight
+                (OPP_REAL *)args[4].data_d,    // c_interp
+                (OPP_REAL *)args[5].data_d,    // c_acc
+                (OPP_INT *)args[6].data_d,    // p2c_map
+                (OPP_INT *)c2c_map->map_d,    // c2c_map
+                (OPP_INT *)set->particle_remove_count_d,
+                (OPP_INT *)OPP_remove_particle_indices_d,
+                (OPP_INT *)OPP_move_particle_indices_d,
+                (OPP_INT *)OPP_move_cell_indices_d,
+                (OPP_INT *)OPP_move_count_d,
+                OPP_iter_start,
+                OPP_iter_end
+            );
+        }
+        else // Do segmented reductions ----------       
+        {
+            if (opp_k2_sr_set_stride != set->size) {
+                opp_k2_sr_set_stride = set->size;
+                cutilSafeCall(hipMemcpyToSymbol(HIP_SYMBOL(opp_k2_sr_set_stride_d), &opp_k2_sr_set_stride, sizeof(OPP_INT)));
+            }
+
+            size_t operating_size_dat5 = 0, resize_size_dat5 = 0;
+
+            operating_size_dat5 += (size_t)1;
+            resize_size_dat5 += (size_t)1;
+
+            operating_size_dat5 *= (size_t)(set->size);
+            resize_size_dat5 *= (size_t)(set->set_capacity);
+
+            // Resize the key/value device arrays only if current vector is small
+            opp_profiler->start("SR1_ResizeX");
+            if (resize_size_dat5 > sr_dat5_keys_dv.size()) {        
+                sr_dat5_keys_dv.resize(resize_size_dat5, 0);
+                sr_dat5_keys_dv2.resize(resize_size_dat5, 0);               
+                sr_dat5_values_dv.resize(resize_size_dat5 * (args[5].dat->dim), 0.0);                
+                sr_dat5_values_dv2.resize(resize_size_dat5 * (args[5].dat->dim), 0.0);
+            }
+            opp_profiler->end("SR1_ResizeX");
+
+            // Reset the key/value device arrays
+            opp_profiler->start("SR2_InitX");
+            opp_k2::reset_OPP_INT_values<<<num_blocks, block_size>>>(
+                (OPP_INT *)thrust::raw_pointer_cast(sr_dat5_keys_dv.data()), 0, sr_dat5_keys_dv.size());
+            opp_k2::sequence_OPP_INT_values<<<num_blocks, block_size>>>(
+                (OPP_INT *)thrust::raw_pointer_cast(sr_dat5_keys_dv2.data()), 0, sr_dat5_keys_dv2.size());
+            
+            const int num_blocks2 = (sr_dat5_values_dv.size() - 1) / block_size + 1;
+            opp_k2::reset_OPP_REAL_values<<<num_blocks2, block_size>>>(
+                (OPP_REAL *)thrust::raw_pointer_cast(sr_dat5_values_dv.data()), 0, sr_dat5_values_dv.size());
+            // opp_k2::reset_OPP_REAL_values<<<num_blocks2, block_size>>>(
+            //     (OPP_REAL *)thrust::raw_pointer_cast(sr_dat5_values_dv2.data()), 0, sr_dat5_values_dv2.size());
+            cutilSafeCall(hipDeviceSynchronize());
+            opp_profiler->end("SR2_InitX");
+
+            // Create key/value pairs
+            opp_profiler->start("SR3_CrKeyValX");
+            opp_dev_sr_move_deposit_kernel<<<num_blocks, block_size>>>(
+                (OPP_REAL *)args[0].data_d,    // p_vel
+                (OPP_REAL *)args[1].data_d,    // p_pos
+                (OPP_REAL *)args[2].data_d,    // p_streak_mid
+                (OPP_REAL *)args[3].data_d,    // p_weight
+                (OPP_REAL *)args[4].data_d,    // c_interp
+                (OPP_REAL *)args[5].data_d,    // c_acc
+                (OPP_INT *)args[6].data_d,    // p2c_map
+                (OPP_INT *)c2c_map->map_d,    // c2c_map
+                (OPP_INT *)set->particle_remove_count_d,
+                (OPP_INT *)OPP_remove_particle_indices_d,
+                (OPP_INT *)OPP_move_particle_indices_d,
+                (OPP_INT *)OPP_move_cell_indices_d,
+                (OPP_INT *)OPP_move_count_d,
+                (OPP_REAL *)thrust::raw_pointer_cast(sr_dat5_values_dv.data()),     // sr values for c_acc
+                (OPP_INT *)thrust::raw_pointer_cast(sr_dat5_keys_dv.data()),     // sr keys for c_acc  
+                OPP_iter_start,
+                OPP_iter_end
+            );
+            cutilSafeCall(hipDeviceSynchronize());
+            opp_profiler->end("SR3_CrKeyValX");
+
+            // Sort by keys to bring the identical keys together and store the order in sr_dat5_keys_dv2
+            opp_profiler->start("SR4_SortByKeyX");
+            thrust::sort_by_key(thrust::device,
+                sr_dat5_keys_dv.begin(), sr_dat5_keys_dv.begin() + operating_size_dat5, 
+                sr_dat5_keys_dv2.begin());
+            opp_profiler->end("SR4_SortByKeyX"); 
+
+            // Sort values according to sr_dat5_keys_dv2
+            opp_profiler->start("SR5_AssignByKeyX"); 
+            opp_k2::assign_values_by_key<<<num_blocks, block_size>>>(
+                (OPP_INT *)thrust::raw_pointer_cast(sr_dat5_keys_dv2.data()),
+                (OPP_REAL *)thrust::raw_pointer_cast(sr_dat5_values_dv.data()),
+                (OPP_REAL *)thrust::raw_pointer_cast(sr_dat5_values_dv2.data()),
+                0, operating_size_dat5);
+            cutilSafeCall(hipDeviceSynchronize());
+            opp_profiler->end("SR5_AssignByKeyX"); 
+
+            // Compute the unique keys and their corresponding values
+            opp_profiler->start("SR6_RedByKeyX");
+            auto new_end = thrust::reduce_by_key(
+                sr_dat5_keys_dv.begin(), sr_dat5_keys_dv.begin() + operating_size_dat5,
+                sr_dat5_values_dv2.begin(),
+                sr_dat5_keys_dv2.begin(), sr_dat5_values_dv.begin());  
+            const size_t reduced_size = (new_end.first - sr_dat5_keys_dv2.begin());
+
+            for (int d = 1; d < 12; ++d) {
+                auto new_end = thrust::reduce_by_key(
+                    sr_dat5_keys_dv.begin(), sr_dat5_keys_dv.begin() + operating_size_dat5,
+                    sr_dat5_values_dv2.begin() + d * opp_k2_sr_set_stride,
+                    thrust::make_discard_iterator(), sr_dat5_values_dv.begin() + d * opp_k2_sr_set_stride);     
+            }      
+            opp_profiler->end("SR6_RedByKeyX");
+
+            // Assign reduced values to the nodes using keys/values
+            opp_profiler->start("SR7_AssignX");
+            num_blocks = reduced_size / block_size + 1;
+            for (int d = 0; d < 12; ++d) { // Could invoke the kernel once and have all dims updated with that
+                opp_k2::assign_values<<<num_blocks, block_size>>> ( 
+                    (OPP_INT *) thrust::raw_pointer_cast(sr_dat5_keys_dv2.data()),
+                    (OPP_REAL *) thrust::raw_pointer_cast(sr_dat5_values_dv.data() + d * opp_k2_sr_set_stride),
+                    ((OPP_REAL *) args[5].data_d) + d * opp_k2_dat5_stride,
+                    0, reduced_size);
+            }
+            cutilSafeCall(hipDeviceSynchronize());
+            opp_profiler->end("SR7_AssignX");
+
+            // Last: clear the thrust vectors if this is the last iteration (avoid crash)
+            opp_profiler->start("SR8_ClearX");
+            if (opp_params->get<OPP_INT>("num_steps") == (OPP_main_loop_iter + 1)) {
+                sr_dat5_values_dv.clear(); sr_dat5_values_dv.shrink_to_fit();
+                sr_dat5_keys_dv.clear(); sr_dat5_keys_dv.shrink_to_fit();
+            } 
+            opp_profiler->end("SR8_ClearX");
+        }    
 
     } while (opp_finalize_particle_move(set)); 
 

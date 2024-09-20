@@ -1,0 +1,55 @@
+#!/bin/bash
+
+module purge
+
+export OPP=/home/zl/phd/OP-PIC
+export OPP_INSTALL_PATH=$OPP/opp_install
+export OPP_TRANSLATOR=$OPP/opp_translator/translator
+export OPP_PATH=$OPP/opp_lib
+
+export CC_COMPILER=icpx
+export MPI_COMPILER=mpicxx
+
+export MPICH_CXX=$(spack location -i intel-oneapi-compilers@2024.2.1/jpypt46)/compiler/2024.2/bin/icpx
+export MPICH_CC=$(spack location -i intel-oneapi-compilers@2024.2.1/jpypt46)/compiler/2024.2/bin/icx
+spack load intel-oneapi-dpct@2024.2.1
+
+export CPPFLAGS_ADD="-fp-model precise"
+export SYCLFLAGS_ADD="-fp-model precise -fsycl-targets=nvptx64-nvidia-cuda -Xsycl-target-backend=nvptx64-nvidia-cuda --cuda-gpu-arch=sm_90 "
+# export SYCLFLAGS_ADD=" -fsycl-targets=spir64_x86_64 "
+# export SYCLFLAGS_ADD="-fp-model precise -fsycl-targets=nvptx64-nvidia-cuda -Xsycl-target-backend=nvptx64-nvidia-cuda --cuda-gpu-arch=sm_90 -Xcuda-ptxas --maxrregcount=128"
+
+# module load cuda/12.5
+# export CUDA_INSTALL_PATH="/opt/cuda/12.5"
+module load cuda/12.0
+export CUDA_INSTALL_PATH="/opt/nvidia/hpc_sdk/Linux_x86_64/23.1/cuda/12.0"
+
+export NVCCFLAGS_ADD='-gencode arch=compute_90,code=sm_90'
+export CUDA_ARCH=90
+
+. /home/zl/spack_install/spack_demos/opt/spack/linux-debian12-zen3/gcc-12.2.0/intel-oneapi-compilers-2024.2.1-jpypt464ei5wbrl2bly2y3hbngnhp3j4/setvars.sh --include-intel-llvm
+ 
+export PETSC_INSTALL_PATH=/home/zl/lib_install/petsc-3.20.5-oneapi-2024.2.1_demos
+
+export HDF5_INSTALL_PATH=$(spack location -i hdf5@1.14.3)
+export LD_LIBRARY_PATH=$HDF5_INSTALL_PATH/lib:$LD_LIBRARY_PATH
+
+# install cuda plugin!
+# sh oneapi-for-nvidia-gpus-2024.2.1-cuda-12.0-linux.sh --install-dir /home/zl/spack_install/spack_demos/opt/spack/linux-debian12-zen3/gcc-12.2.0/intel-oneapi-compilers-2024.2.1-jpypt464ei5wbrl2bly2y3hbngnhp3j4
+
+# dpct conversions
+# dpct --cuda-include-path=/opt/nvidia/hpc_sdk/Linux_x86_64/23.7/cuda/include --process-all --in-root=. --out-root=/home/zl/phd/test/OP-PIC/dpct_lib
+# dpct --extra-arg="-DUSE_THRUST" --extra-arg="-DUSE_MPI" --extra-arg="-I/home/zl/phd/test/OP-PIC/opp_lib/include" --cuda-include-path=/opt/nvidia/hpc_sdk/Linux_x86_64/23.7/cuda/include --process-all --in-root=. --out-root=/home/zl/phd/test/OP-PIC/dpct_lib
+# dpct --extra-arg="-DUSE_THRUST" --extra-arg="-DUSE_MPI" --extra-arg="-I/home/zl/phd/test/OP-PIC/opp_lib/include" --cuda-include-path=/opt/nvidia/hpc_sdk/Linux_x86_64/23.7/cuda/include --process-all --in-root=. --out-root=/home/zl/phd/test/OP-PIC/dpct_cabanapic_cg
+
+
+# module load compiler-rt/latest
+# module load compiler/2024.0.2
+# module load dpl/2022.3
+# module load dpct/2024.0.0
+# module load mpi/2021.11
+
+# module load nvhpc/23.7
+# export PETSC_INSTALL_PATH=/home/zl/lib_install/petsc-3.20.5-oneapi-2024.2.1_demos
+# export HDF5_INSTALL_PATH=$(spack location -i hdf5@1.14.3)
+# export LD_LIBRARY_PATH=$HDF5_INSTALL_PATH/lib:$LD_LIBRARY_PATH

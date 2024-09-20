@@ -1,15 +1,26 @@
 import numpy as np
+import time
 # import pyvista as pv
 
 # 102 : Edges
 # 203 : Faces (Triangles)
 # 304 : Tetrahedra
 
+def time_it(func):
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        print(f"Function '{func.__name__}' took {end_time - start_time} seconds to execute.")
+        return result
+    return wrapper
+
 # --------------------------------------------------------
 def get_node_index(x, y, z, nx, ny, nz):
     return (x) + (y) * (nx + 1) + (z) * (ny + 1) * (nx + 1)
 
 # --------------------------------------------------------
+@time_it
 def create_nodes(nx, ny, nz, cube_length):
 
     # Calculate the total number of nodes = cube edges + centroids
@@ -40,6 +51,7 @@ def create_nodes(nx, ny, nz, cube_length):
 
 # --------------------------------------------------------
 # Create tetrahedral connectivity centered around the center node
+@time_it
 def create_tetrahedra(nx, ny, nz):
     
     num_tetrahedra = nx * ny * nz * 12
@@ -84,6 +96,7 @@ def create_tetrahedra(nx, ny, nz):
     return tetrahedra
 
 # --------------------------------------------------------
+@time_it
 def create_inlet_and_fixed_faces(nx, ny, nz, cube_length, nodes, tetrahedras):
     
     x = nx * cube_length
@@ -126,6 +139,7 @@ def create_inlet_and_fixed_faces(nx, ny, nz, cube_length, nodes, tetrahedras):
     return boundary_nodes, inlet_nodes, inlet_faces
 
 # --------------------------------------------------------
+@time_it
 def print_mesh(nodes, tetrahedras):
     file_path = "mesh.dat"
     with open(file_path, 'w') as file:
@@ -139,6 +153,7 @@ def print_mesh(nodes, tetrahedras):
             file.write(f"{tetrahedra[0]} {tetrahedra[1]} {tetrahedra[2]} {tetrahedra[3]} {tetrahedra[4]} {tetrahedra[5]}\n")
 
 # --------------------------------------------------------
+@time_it
 def print_inlet_faces(inlet_nodes, inlet_faces):
     file_path = "inlet.dat"
     with open(file_path, 'w') as file:
@@ -152,6 +167,7 @@ def print_inlet_faces(inlet_nodes, inlet_faces):
             file.write(f"{face[0]} {face[1]} {face[2]} {face[3]} {face[4]}\n")   
 
 # --------------------------------------------------------
+@time_it
 def print_fixed_nodes(boundary_nodes):
     file_path = "wall.dat"
     with open(file_path, 'w') as file:
@@ -178,7 +194,7 @@ def print_fixed_nodes(boundary_nodes):
 # 640 640 10 : 49152000  512 - Nodes
 
 nx = 20                          # number of cubes in x direction
-ny = 20                          # number of cubes in y direction
+ny = 20*4                        # number of cubes in y direction
 nz = 10                          # number of cubes in z direction
 cube_length = 0.2                # in mm
 tet_count = nx * ny * nz * 12    # there are 12 tetrahedrals per cube

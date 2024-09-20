@@ -69,8 +69,18 @@ class Hip(Target):
     def defaultConfig(self) -> Dict[str, Any]:
         return {"grouped": True, "device": 2, "atomics": True, "seg_red": True, "color2": False, "gbl_inc_atomic": False, "omp": False}
 
+class Sycl(Target):
+    name = "sycl"
+    suffix = "sycl"
+    kernel_translation = True
+    config = {"grouped": True, "device": 2, "atomics": True, "color2": False, "gbl_inc_atomic": False, "omp": False}
+    
+    def defaultConfig(self) -> Dict[str, Any]:
+        return {"grouped": True, "device": 2, "atomics": True, "color2": False, "gbl_inc_atomic": False, "omp": False}
+    
 Target.register(Seq)
 Target.register(Mpi)
 Target.register(Omp)
 Target.register(Cuda)
 Target.register(Hip)
+Target.register(Sycl)

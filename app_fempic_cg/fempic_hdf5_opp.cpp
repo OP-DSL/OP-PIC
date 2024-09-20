@@ -1,5 +1,5 @@
 
-// Auto-generated at 2024-05-27 11:54:26.023476 by opp-translator
+// Auto-generated at 2024-09-20 09:26:09.675252 by opp-translator
 /* 
 BSD 3-Clause License
 
@@ -148,7 +148,7 @@ int main(int argc, char **argv)
 			opp_arg_dat(c_volume, p2c_map, OPP_READ),
 			opp_arg_dat(c_det, p2c_map, OPP_READ));
 
-        auto field_solver = std::make_unique<FESolver>(c2n_map, n_type, n_pos, n_bnd_pot, argc, argv);
+        auto field_solver = std::make_unique<FESolver>(c2n_map, n_type, n_pos, n_bnd_pot);
         field_solver->enrich_cell_shape_deriv(c_sd);
 
     opp_profiler->end("Setup");
@@ -198,7 +198,7 @@ int main(int argc, char **argv)
                 opp_arg_dat(n_charge_den,  OPP_RW), 
                 opp_arg_dat(n_volume,      OPP_READ));
 
-            field_solver->computePhi(  // TODO: Change this to kernel calls
+            field_solver->compute_phi(  // TODO: Change this to kernel calls
                 opp_arg_dat(n_potential,  OPP_WRITE),
                 opp_arg_dat(n_charge_den, OPP_READ),
                 opp_arg_dat(n_bnd_pot,    OPP_READ));

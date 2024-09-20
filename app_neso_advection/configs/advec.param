@@ -1,7 +1,7 @@
 # Simulation parameters
-INT num_steps = 250 
-INT nx = 128
-INT ny = 128
+INT num_steps = 500
+INT nx = 256
+INT ny = 256
 REAL dt = 0.5
 REAL cell_width = 0.5
 INT npart_per_cell = 1000
@@ -10,12 +10,12 @@ BOOL verify_particles = true
 # System parameters
 BOOL opp_auto_sort          = false
 REAL opp_allocation_multiple = 1.1
-INT opp_threads_per_block   = 512
+INT opp_threads_per_block   = 256
 BOOL opp_profile_all        = false
 INT opp_gpu_direct = 0
 BOOL opp_global_move = false
 REAL grid_spacing    = 0.5
 
 # HoleFill_All Sort_All Shuffle_All Sort_Periodic Shuffle_Periodic
-STRING opp_fill = Shuffle_Periodic
+STRING opp_fill = HoleFill_All
 INT opp_fill_period = 4

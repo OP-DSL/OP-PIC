@@ -59,7 +59,6 @@ void opp_init(int argc, char **argv)
 
 #ifdef USE_MPI
     OPP_MPI_WORLD = MPI_COMM_WORLD;
-    OPP_MPI_GLOBAL = MPI_COMM_WORLD;
     
     MPI_Comm_rank(OPP_MPI_WORLD, &OPP_rank);
     MPI_Comm_size(OPP_MPI_WORLD, &OPP_comm_size);
@@ -509,12 +508,13 @@ void opp_particle_sort(opp_set set)
 //****************************************
 void opp_print_dat_to_txtfile(opp_dat dat, const char *file_name_prefix, const char *file_name_suffix)
 {
-    if (OPP_DBG) opp_printf("opp_print_dat_to_txtfile", "writing file [%s]", file_name_suffix);
+    if (OPP_DBG) opp_printf("opp_print_dat_to_txtfile", "writing file [%s %s] data %p data_d %p", 
+                    file_name_prefix, file_name_suffix, dat->data, dat->data_d);
 
     if (dat->dirty_hd == Dirty::Host) 
         opp_download_dat(dat);
 
-    std::string prefix = std::string(file_name_prefix) + "_c";
+    std::string prefix = std::string(file_name_prefix) + "_cuda";
     opp_print_dat_to_txtfile_core(dat, prefix.c_str(), file_name_suffix);
 }
 
@@ -523,9 +523,9 @@ void opp_print_map_to_txtfile(opp_map map, const char *file_name_prefix, const c
 {
     if (OPP_DBG) opp_printf("opp_print_map_to_txtfile", "writing file [%s]", file_name_suffix);
     
-    std::string prefix = std::string(file_name_prefix) + "_c";
+    std::string prefix = std::string(file_name_prefix) + "_cuda" + std::to_string(OPP_rank) + "_";
 
-    opp_print_map_to_txtfile_core(map, file_name_prefix, file_name_suffix);
+    opp_print_map_to_txtfile_core(map, prefix.c_str(), file_name_suffix);
 }
 
 //****************************************
@@ -617,8 +617,9 @@ void opp_mpi_print_dat_to_txtfile(opp_dat dat, const char *file_name)
 {
     cutilSafeCall(cudaDeviceSynchronize());
 #ifdef USE_MPI
-    const std::string prefixed_file_name = std::string("mpi_files/MPI_") + 
-                                            std::to_string(OPP_comm_size) + std::string("_") + file_name;
+    const std::string prefixed_file_name = std::string("mpi_files/CUDA_") + 
+                std::to_string(OPP_comm_size) + std::string("_iter") + 
+                std::to_string(OPP_main_loop_iter) + std::string("_") + file_name;
 
     // rearrange data back to original order in mpi
     opp_dat temp = opp_fetch_data(dat);

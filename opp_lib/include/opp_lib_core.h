@@ -41,6 +41,21 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     #include <petscksp.h>
 #endif
 
+#ifdef USE_THRUST
+    #include <thrust/device_vector.h>
+    #include <thrust/host_vector.h>
+    #define THRUST_REAL thrust::device_vector<double>
+    #define THRUST_INT thrust::device_vector<int>
+#elif defined(USE_SYCL)
+    #include <sycl/sycl.hpp>
+    #define THRUST_REAL void
+    #define THRUST_INT void    
+    extern sycl::queue* opp_queue;
+#else
+    #define THRUST_REAL void
+    #define THRUST_INT void
+#endif
+
 //*************************************************************************************************
 
 #ifdef DEBUG_LOG
@@ -81,16 +96,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define OPP_BOOL_ZERO  0
 
 #define OPP_DEFAULT_GPU_THREADS_PER_BLOCK 32
-
-#ifdef USE_THRUST
-    #include <thrust/device_vector.h>
-    #include <thrust/host_vector.h>
-    #define THRUST_REAL thrust::device_vector<double>
-    #define THRUST_INT thrust::device_vector<int>
-#else
-    #define THRUST_REAL void
-    #define THRUST_INT void
-#endif
 
 #define LOG_STR_LEN 100000
 
@@ -241,11 +246,12 @@ struct opp_map_core {
 
 struct opp_dat_core {
     int index;                  /* index */
-    opp_set set;              /* set on which data is defined */
+    opp_set set;                /* set on which data is defined */
     int dim;                    /* dimension of data */
     int size;                   /* size of each element in dataset */
     char *data;                 /* data on host */
     char *data_d;               /* data on device (GPU) */
+    char *data_swap_d;          /* data on device (GPU) - used for swapping */
     char const *type;           /* datatype */
     char const *name;           /* name of dataset */
     char *buffer_d;             /* buffer for MPI halo sends on the devidce */
@@ -363,6 +369,8 @@ extern int OPP_main_loop_iter;
 extern int OPP_gpu_threads_per_block;
 extern size_t OPP_gpu_shared_mem_per_block;
 extern int OPP_part_cells_set_size;
+extern int OPP_part_comm_count_per_iter;
+extern int OPP_move_max_hops;
 
 extern std::vector<opp_set> opp_sets;
 extern std::vector<opp_map> opp_maps;

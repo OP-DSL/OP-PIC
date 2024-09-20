@@ -1,6 +1,6 @@
 # OP-PIC Library
 
-The library include sequential(`seq`), OpenMP(`omp`), MPI(`mpi`), CUDA(`cuda`), HIP(`hip`) and their CUDA+MPI(`cuda_mpi`), HIP+MPI(`hip_mpi`) distributed memory parallelizations. 
+The library include sequential(`seq`), OpenMP(`omp`), MPI(`mpi`), CUDA(`cuda`), HIP(`hip`), SYCL(`sycl`) and their CUDA+MPI(`cuda_mpi`), HIP+MPI(`hip_mpi`), SYCL+MPI(`sycl_mpi`) distributed memory parallelizations. 
 
 `PETSc` and `ParMETIS` is optional, and can be embedded to the library using flags `PETSC=1` and `PARMETIS=1` during compilation. 
 
@@ -19,6 +19,8 @@ Build OP-PIC platform specific OP-PIC library archive using,
  * `make cuda_mpi`
  * `make hip`
  * `make hip_mpi`
+ * `make sycl`
+ * `make sycl_mpi`
 
 The above `make` commands will build the release version using `-O3` flags without debug information.
 

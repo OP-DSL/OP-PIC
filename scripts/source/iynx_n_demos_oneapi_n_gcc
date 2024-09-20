@@ -1,0 +1,178 @@
+# For iynx, change the compilers to oneapi@2023.0.0 in /home/zl/.spack/linux/compilers.yaml
+# For demos, change the compilers to oneapi@2023.1.0 in /home/zl/.spack/linux/compilers.yaml
+
+# spack install intel-oneapi-compilers@2023.0.0 %gcc@12.2.0
+# spack load intel-oneapi-compilers
+# spack compiler find
+# spack unload intel-oneapi-compilers
+# spack install hdf5@1.14.0 +mpi %oneapi@2023.0.0
+# spack install petsc@3.19.1 +mpi %oneapi@2023.0.0
+
+# iynx oneapi 2023.0.0 ---------------------------------------------------------------------------------
+
+module purge
+
+export OPP=/home/zl/phd/OP-PIC
+export OPP_INSTALL_PATH=$OPP/opp_install
+export OPP_TRANSLATOR=$OPP/opp_translator/translator
+export OPP_PATH=$OPP/opp_lib
+
+spack load intel-oneapi-mpi@2021.9.0/tbxdwo7
+spack load petsc@3.19.1%oneapi@=2023.0.0
+spack load hdf5@1.14.1-2%oneapi@=2023.0.0
+
+export CC_COMPILER=mpicxx
+export MPI_COMPILER=mpicxx
+
+export MPI_INSTALL_PATH=$(spack location -i intel-oneapi-mpi@2021.9.0/tbxdwo7)/mpi/2021.9.0
+export MPICH_CXX=$(spack location -i intel-oneapi-compilers@2023.0.0)/compiler/2023.0.0/linux/bin/icpx
+export MPICH_CC=$(spack location -i intel-oneapi-compilers@2023.0.0)/compiler/2023.0.0/linux/bin/icx
+export PETSC_INSTALL_PATH=$(spack location -i petsc@3.19.1%oneapi@=2023.0.0)
+export HDF5_INSTALL_PATH=$(spack location -i hdf5@1.14.1-2%oneapi@=2023.0.0)
+export LD_LIBRARY_PATH=$HDF5_INSTALL_PATH/lib:$LD_LIBRARY_PATH
+
+export CCFLAGS_ADD="-fp-model precise"
+
+# iynx gcc 12.2.0 --------------------------------------------------------------------------------------
+
+module purge
+
+export OPP=/home/zl/phd/OP-PIC
+export OPP_INSTALL_PATH=$OPP/opp_install
+export OPP_TRANSLATOR=$OPP/opp_translator/translator
+export OPP_PATH=$OPP/opp_lib
+
+spack load openmpi@4.1.5
+spack load petsc@3.19.1%gcc@=12.2.0/62sv5zj
+spack load hdf5@1.14.1-2%gcc@=12.2.0/r5i22pi
+
+export CC_COMPILER=g++
+export MPI_COMPILER=mpicxx
+
+export MPI_INSTALL_PATH=$(spack location -i openmpi@4.1.5)
+export MPICH_CXX=/usr/bin/g++
+export MPICH_CC=/usr/bin/gcc
+export PETSC_INSTALL_PATH=$(spack location -i petsc@3.19.1%gcc@=12.2.0/62sv5zj)
+export HDF5_INSTALL_PATH=$(spack location -i hdf5@1.14.1-2%gcc@=12.2.0/r5i22pi)
+export LD_LIBRARY_PATH=$HDF5_INSTALL_PATH/lib:$LD_LIBRARY_PATH
+spack load python@3.9.7
+
+cd $OPP/opp_translator/
+rm -rf opp_venv
+ln -s opp_venv_iynx opp_venv
+source $OPP/opp_translator/opp_venv/bin/activate
+cd $OPP
+
+# demos oneapi 2023.1.0 ---------------------------------------------------------------------------------
+
+# PETSC NON FUNCTIONAL with petsc, other cpu apps work
+
+module purge
+
+export OPP=/home/zl/phd/OP-PIC
+export OPP_INSTALL_PATH=$OPP/opp_install
+export OPP_TRANSLATOR=$OPP/opp_translator/translator
+export OPP_PATH=$OPP/opp_lib
+
+spack load intel-oneapi-mpi@2021.9.0/uytn2v3
+spack load petsc@3.19.1%oneapi@=2023.1.0/???
+spack load hdf5@1.14.1-2%oneapi@=2023.1.0/sh3ac4b
+
+export CC_COMPILER=mpicxx
+export MPI_COMPILER=mpicxx
+
+export MPI_INSTALL_PATH=$(spack location -i intel-oneapi-mpi@2021.9.0/uytn2v3)/mpi/2021.9.0
+export MPICH_CXX=$(spack location -i intel-oneapi-compilers@2023.0.0)/compiler/2023.0.0/linux/bin/icpx
+export MPICH_CC=$(spack location -i intel-oneapi-compilers@2023.0.0)/compiler/2023.0.0/linux/bin/icx
+export PETSC_INSTALL_PATH=$(spack location -i petsc@3.19.1%oneapi@=2023.1.0/???)
+export HDF5_INSTALL_PATH=$(spack location -i hdf5@1.14.1-2%oneapi@=2023.1.0/sh3ac4b)
+export LD_LIBRARY_PATH=$HDF5_INSTALL_PATH/lib:$LD_LIBRARY_PATH
+
+export CCFLAGS_ADD="-fp-model precise"
+
+*********************************************************************************************
+           UNABLE to CONFIGURE with GIVEN OPTIONS (see configure.log for details):
+---------------------------------------------------------------------------------------------
+  You set a value for --with-blaslapack-lib=<lib>, but
+  ['/home/zl/lib_setup/spack/opt/spack/linux-debian12-zen3/oneapi-2023.1.0/intel-oneapi-mkl-2023.1.0-at2yu54kdbjbfefvamn5ruq5qiabye6i/mkl/2023.1.0/lib/intel64/libmkl_intel_lp64.so',
+  '/home/zl/lib_setup/spack/opt/spack/linux-debian12-zen3/oneapi-2023.1.0/intel-oneapi-mkl-2023.1.0-at2yu54kdbjbfefvamn5ruq5qiabye6i/mkl/2023.1.0/lib/intel64/libmkl_sequential.so',
+  '/home/zl/lib_setup/spack/opt/spack/linux-debian12-zen3/oneapi-2023.1.0/intel-oneapi-mkl-2023.1.0-at2yu54kdbjbfefvamn5ruq5qiabye6i/mkl/2023.1.0/lib/intel64/libmkl_core.so',
+  '/lib/x86_64-linux-gnu/libm.so'] cannot be used
+*********************************************************************************************
+
+# demos gcc 12.2.0 --------------------------------------------------------------------------------------
+
+module purge
+
+export OPP=/home/zl/phd/OP-PIC
+export OPP_INSTALL_PATH=$OPP/opp_install
+export OPP_TRANSLATOR=$OPP/opp_translator/translator
+export OPP_PATH=$OPP/opp_lib
+
+spack load mpich@4.1.1
+spack load petsc@3.19.1%gcc@=12.2.0/hc3jxay
+spack load hdf5@1.14.1-2%gcc@=12.2.0/2qjxlnq
+spack load cuda@12.1.1
+
+export CC_COMPILER=g++
+export MPI_COMPILER=mpicxx
+
+export MPI_INSTALL_PATH=$(spack location -i mpich@4.1.1)
+export MPICH_CXX=/usr/bin/g++
+export MPICH_CC=/usr/bin/gcc
+export PETSC_INSTALL_PATH=$(spack location -i petsc@3.19.1%gcc@=12.2.0/hc3jxay)
+export HDF5_INSTALL_PATH=$(spack location -i hdf5@1.14.1-2%gcc@=12.2.0/2qjxlnq)
+export CUDA_INSTALL_PATH=$(spack location -i cuda@12.1.1)
+
+export NVCCFLAGS_ADD='-gencode arch=compute_90,code=sm_90 -I'$MPI_INSTALL_PATH'/include'
+
+export LD_LIBRARY_PATH=$HDF5_INSTALL_PATH/lib:$LD_LIBRARY_PATH
+
+# ------------------------------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------------------------------
+# Running Sycl examples on demos - cd phd/test/sycl
+
+  $ spack install intel-oneapi-compilers@2024.2.1
+  $ sh /home/zl/lib_setup/oneapi-for-nvidia-gpus-2024.2.1-cuda-12.0-linux.sh --install-dir /home/zl/spack_install/spack_demos/opt/spack/linux-debian12-zen3/gcc-12.2.0/intel-oneapi-compilers-2024.2.1-jpypt464ei5wbrl2bly2y3hbngnhp3j4
+
+  $ module load cuda/12.5
+  $ . /home/zl/spack_install/spack_demos/opt/spack/linux-debian12-zen3/gcc-12.2.0/intel-oneapi-compilers-2024.2.1-jpypt464ei5wbrl2bly2y3hbngnhp3j4/setvars.sh --include-intel-llvm
+  
+  $ sycl-ls
+    # [opencl:cpu][opencl:0] Intel(R) OpenCL, AMD EPYC 9334 32-Core Processor                 OpenCL 3.0 (Build 0) [2024.18.7.0.11_160000]
+    # [cuda:gpu][cuda:0] NVIDIA CUDA BACKEND, NVIDIA H100 PCIe 9.0 [CUDA 12.6]
+
+  $ cd /home/zl/phd/test/sycl/
+  $ icpx -w -fsycl -fsycl-targets=nvptx64-nvidia-cuda -Xsycl-target-backend=nvptx64-nvidia-cuda --cuda-gpu-arch=sm_90 -O3 -std=c++17 -o sycl_sort_reduce_by_key sycl_sort_reduce_by_key.cpp
+  $ ONEAPI_DEVICE_SELECTOR="cuda:*" SYCL_PI_TRACE=1 ./sycl_sort_reduce_by_key
+
+
+# Sycl conversion (from CUDA) ---------------------------------------------------------------------------
+
+module purge
+
+export OPP=/home/zl/phd/OP-PIC
+export OPP_INSTALL_PATH=$OPP/opp_install
+export OPP_TRANSLATOR=$OPP/opp_translator/translator
+export OPP_PATH=$OPP/opp_lib
+
+export CC_COMPILER=icpx
+export MPI_COMPILER=mpicxx
+
+export MPICH_CXX=$(spack location -i intel-oneapi-compilers@2024.2.1/jpypt46)/compiler/2024.2/bin/icpx
+export MPICH_CC=$(spack location -i intel-oneapi-compilers@2024.2.1/jpypt46)/compiler/2024.2/bin/icx
+
+export SYCLFLAGS_ADD=" -fsycl-targets=nvptx64-nvidia-cuda -Xsycl-target-backend=nvptx64-nvidia-cuda --cuda-gpu-arch=sm_90 "
+
+spack load intel-oneapi-dpct@2024.2.1
+module load cuda/12.5
+. /home/zl/spack_install/spack_demos/opt/spack/linux-debian12-zen3/gcc-12.2.0/intel-oneapi-compilers-2024.2.1-jpypt464ei5wbrl2bly2y3hbngnhp3j4/setvars.sh --include-intel-llvm
+  
+dpct --extra-arg="-DUSE_THRUST" --extra-arg="-DUSE_MPI" --extra-arg="-I/home/zl/phd/test/OP-PIC/opp_lib/include" --cuda-include-path=/opt/nvidia/hpc_sdk/Linux_x86_64/23.7/cuda/include --process-all --in-root=. --out-root=/home/zl/phd/test/OP-PIC/dpct_lib
+dpct --extra-arg="-DUSE_THRUST" --extra-arg="-DUSE_MPI" --extra-arg="-I/home/zl/phd/test/OP-PIC/opp_lib/include" --cuda-include-path=/opt/nvidia/hpc_sdk/Linux_x86_64/23.7/cuda/include --process-all --in-root=. --out-root=/home/zl/phd/test/OP-PIC/dpct_cabanapic_cg
+
+# ------------------------------------------------------------------------------------------------------
+
+
+ONEAPI_DEVICE_SELECTOR="cuda:*" SYCL_PI_TRACE=1 bin/sycl configs/advec.param 

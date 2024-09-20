@@ -14,6 +14,8 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <memory>
+#include <cmath>
+#include <sys/queue.h>
 
 #ifdef USE_MPI
     namespace opp {

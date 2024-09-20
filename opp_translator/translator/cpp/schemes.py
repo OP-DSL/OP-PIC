@@ -201,3 +201,55 @@ class CppHip(Scheme):
         return ctk.writeSource(extracted_entities)
 
 Scheme.register(CppHip)
+
+class CppSycl(Scheme):
+    lang = Lang.find("cpp")
+    target = Target.find("sycl")
+
+    fallback = None
+
+    consts_template = None
+    loop_host_template = Path("cpp/sycl/loop_host.hpp.jinja")
+    move_loop_host_template = Path("cpp/sycl/move_loop_host.hpp.jinja")
+    master_kernel_template = Path("cpp/sycl/master_kernel.cpp.jinja")
+    header = "opp_sycl.h"
+    
+    def translateKernel(
+        self,
+        loop: OP.Loop,
+        program: Program,
+        app: Application,
+        config: Dict[str, Any],
+        kernel_idx: int,
+    ) -> str:
+        kernel_entities = app.findEntities(loop.kernel, program)
+        if len(kernel_entities) == 0:
+            raise ParseError(f"unable to find kernel: {loop.kernel}")
+
+        extracted_entities = ctk.extractDependencies(kernel_entities, app)
+
+        if loop.loop_type == OP.LoopType.MOVE_LOOP:
+            ctk.updateMoveKernelArgs(extracted_entities, 
+                lambda typ, _: f"char& opp_move_status_flag, const bool opp_move_hop_iter_one_flag, // Added by code-gen\n    const OPP_INT* opp_c2c, OPP_INT* opp_p2c, // Added by code-gen\n    {typ}", loop.kernel)
+
+        dependent_functions = ctk.updateKernelAsLambda(extracted_entities, loop.kernel)
+        ctk.renameDependentFunctionCalls(extracted_entities, dependent_functions, lambda const, _: f"{const}_sycl")
+        ctk.renameConsts(extracted_entities, app, lambda const, _: f"{const}_sycl")
+
+        for entity, rewriter in filter(lambda e: e[0] in kernel_entities, extracted_entities):
+            kernel_idx = 0
+            for i, (l, program) in enumerate(app.uniqueLoops(), 1):
+                if l.kernel == loop.kernel:
+                    kernel_idx = i
+            ctk.insertStrides(
+                entity,
+                rewriter,
+                app,
+                loop,
+                lambda dat_id: f"opp_k{kernel_idx}_{dat_id}_stride_sycl[0]",
+                skip=lambda arg: arg.access_type == OP.AccessType.INC and (arg.map_id is not None or arg.p2c_id is not None) and (config["atomics"] or config["seg_red"]),
+            )
+
+        return ctk.writeSource(extracted_entities, ";")
+
+Scheme.register(CppSycl)

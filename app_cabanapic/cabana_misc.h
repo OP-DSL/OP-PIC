@@ -174,14 +174,19 @@ void enrich_particles_two_stream(const Deck& deck, const OPP_INT cell_count,
         OPP_REAL* pos,  OPP_REAL* vel, OPP_REAL* str_mid, OPP_INT* cid, 
         OPP_REAL* weight, const OPP_INT* global_cids, const OPP_INT* ghost) {
     
-    OPP_RUN_ON_ROOT() opp_printf("Setup", "enrich_particles_two_stream");
-
     const OPP_INT npart_per_cell = deck.nppc;
     const OPP_REAL const_weight  = deck.we;
     const OPP_REAL v0            = deck.v0;
     const OPP_INT nx             = deck.nx;
     const OPP_INT ny             = deck.ny;
     const OPP_REAL dxp           = (2.0 / npart_per_cell);
+
+    const OPP_REAL velX_mult_const = opp_params->get<OPP_REAL>("velX_mult_const");
+    const OPP_REAL velY_mult_const = opp_params->get<OPP_REAL>("velY_mult_const");
+    const OPP_REAL velZ_mult_const = opp_params->get<OPP_REAL>("velZ_mult_const");
+
+    OPP_RUN_ON_ROOT() opp_printf("Setup", "enrich_particles_two_stream Mult Constants %lf %lf %lf",
+                        velX_mult_const, velY_mult_const, velZ_mult_const);
 
     // Populate the host space with particle data.
     int part_idx = 0;
@@ -218,10 +223,11 @@ void enrich_particles_two_stream(const Deck& deck, const OPP_INT cell_count,
             pos[part_idx * DIM + Dim::y] = x;
             pos[part_idx * DIM + Dim::z] = 0.0;
 
-            vel[part_idx * DIM + Dim::x] = sign * v0 * gam * (1.0 + na * sign);
-            vel[part_idx * DIM + Dim::y] = 0; 
-            // vel[part_idx * DIM + Dim::y] = sign * 0.1 * v0 * gam * (1.0 + na * sign);
-            vel[part_idx * DIM + Dim::z] = 0;
+            const double v = sign * v0 * gam * (1.0 + na * sign);
+            // Original CabanaPIC config is when vel_mult_const = 1.0 0.0 0.0
+            vel[part_idx * DIM + Dim::x] = v * velX_mult_const;
+            vel[part_idx * DIM + Dim::y] = v * velY_mult_const; 
+            vel[part_idx * DIM + Dim::z] = v * velZ_mult_const;
 
             str_mid[part_idx * DIM + Dim::x] = 0.0;
             str_mid[part_idx * DIM + Dim::y] = 0.0;

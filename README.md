@@ -1,5 +1,5 @@
 # OP-PIC
-OP-PIC is a high-level embedded domain specific language for writing **unstructured mesh particle in cell** simulations with automatic parallelization on multi-core and many-core architectures. The parallelizations include, sequential(`seq`), OpenMP(`omp`), MPI(`mpi`), CUDA(`cuda`), HIP(`hip`) and their CUDA+MPI(`cuda_mpi`), HIP+MPI(`hip_mpi`) distributed memory parallelizations, The API is embedded in C/C++.
+OP-PIC is a high-level embedded domain specific language for writing **unstructured mesh particle in cell** simulations with automatic parallelization on multi-core and many-core architectures. The parallelizations include, sequential(`seq`), OpenMP(`omp`), MPI(`mpi`), CUDA(`cuda`), HIP(`hip`), SYCL(`sycl`) and their CUDA+MPI(`cuda_mpi`), HIP+MPI(`hip_mpi`), SYCL+MPI(`sycl_mpi`) distributed memory parallelizations, The API is embedded in C/C++.
 
 This repository contains the implementation of the code translation tools and run-time support libraries, and is structured as follows:
  * `opp_lib`: The C/C++ OP-PIC run-time libraries.
@@ -21,6 +21,7 @@ OP-PIC has a variety of toolchain dependencies that you will likely be able to o
  * (Optional) An MPI implementation: Any implementation with the `mpicc` and `mpicxx` wrappers is supported.
  * (Optional) NVIDIA CUDA >= 10.2.89
  * (Optional) AMD HIP-ROCM >= 5.6.0
+ * (Optional) Intel-oneAPI DPCPP compiler (including oneDPL)
 
 In addition, there are a few optional library dependencies that you will likely have to build manually, although some package managers or programming environments may be able to provide appropriate versions:
  * (Optional) [HDF5](https://www.hdfgroup.org/solutions/hdf5/): Used for HDF5 I/O. You may build with and without `--enable-parallel` (depending on if you need MPI), and then specify via the environment variable `HDF5_INSTALL_PATH`.

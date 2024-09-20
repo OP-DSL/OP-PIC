@@ -53,21 +53,25 @@ For regular OP-PIC application without HDF5, use
 If HDF5 is required, invoke the below command.
 `python3 $OPP_TRANSLATOR -v -I$OPP_PATH/include/ --file_paths fempic_hdf5.cpp`
 
-Once the code-generator is invoked, a `fempic_opp.cpp` or `fempic_hdf5_opp.cpp` file and `seq`, `omp`, `mpi`, `cuda` and `hip` folders, including `opp_kernels.<cpp|cu>` and a loop kernel header file per unique `opp_par_loop` or `opp_particle_move` loop will get generated.
+Once the code-generator is invoked, a `fempic_opp.cpp` or `fempic_hdf5_opp.cpp` file and `seq`, `omp`, `mpi`, `cuda`, `hip` and `sycl` folders, including `opp_kernels.<cpp|cu>` and a loop kernel header file per unique `opp_par_loop` or `opp_particle_move` loop will get generated.
 
 ## Compile
 
 Once the platform specific target files are generated, use the provided `MakeFile` to compile the application.
  * `make seq`
- * `make omp`
  * `make mpi`
+ * `make omp`
+ * `make omp_mpi`
  * `make cuda`
  * `make cuda_mpi`
  * `make hip`
  * `make hip_mpi`
+ * `make sycl`
+ * `make sycl_mpi`
  * `make mpi_hdf5`
  * `make cuda_mpi_hdf5`
  * `make hip_mpi_hdf5`
+ * `make sycl_mpi_hdf5`
 
 ### Configuration
 An example configuration file is provided in `OP-PIC/app_fempic_cg/configs` folder.
@@ -82,12 +86,15 @@ To run the application, below commands can be used.
  * `bin/omp configs/coarse.param`
  * `bin/cuda configs/coarse.param`
  * `bin/hip configs/coarse.param`
+ * `bin/sycl configs/coarse.param`
  * `mpirun -np <num_ranks> bin/mpi configs/coarse.param`
  * `mpirun -np <num_ranks> bin/cuda_mpi configs/coarse.param`
  * `mpirun -np <num_ranks> bin/hip_mpi configs/coarse.param`
+ * `mpirun -np <num_ranks> bin/sycl_mpi configs/coarse.param`
 
  * `mpirun -np <num_ranks> bin/mpi_hdf5 configs/coarse.param`
  * `mpirun -np <num_ranks> bin/cuda_mpi_hdf5 configs/coarse.param`
  * `mpirun -np <num_ranks> bin/hip_mpi_hdf5 configs/coarse.param`
+ * `mpirun -np <num_ranks> bin/sycl_mpi_hdf5 configs/coarse.param`
 
 In addition, `srun` can be used for execution.

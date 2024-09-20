@@ -59,7 +59,6 @@ void opp_init(int argc, char **argv)
 
 #ifdef USE_MPI
     OPP_MPI_WORLD = MPI_COMM_WORLD;
-    OPP_MPI_GLOBAL = MPI_COMM_WORLD;
     
     MPI_Comm_rank(OPP_MPI_WORLD, &OPP_rank);
     MPI_Comm_size(OPP_MPI_WORLD, &OPP_comm_size);

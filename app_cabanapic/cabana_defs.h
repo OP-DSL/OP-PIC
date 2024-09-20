@@ -341,11 +341,15 @@ class Deck {
         qsp = param.get<OPP_REAL>("qsp");
         me = param.get<OPP_REAL>("me");
 
+        const OPP_INT domain_expansion = param.get<OPP_INT>("domain_expansion");
         const OPP_REAL gam = 1.0 / sqrt(1.0 - v0 * v0);
         const OPP_REAL default_grid_len = param.get<OPP_REAL>("default_grid_len");
         len_x_global = default_grid_len;
         len_y_global = 0.628318530717959 * (gam * sqrt(gam));
-        len_z_global = default_grid_len;      
+        if (domain_expansion > 0) // Always expect to expand on z direction when weak scaling!   
+            len_z_global = default_grid_len * domain_expansion;
+        else
+            len_z_global = default_grid_len * OPP_comm_size;    
         dx = len_x_global / nx;
         dy = len_y_global / ny;
         dz = len_z_global / nz;
@@ -354,7 +358,7 @@ class Deck {
         dt = 0.99 * courant_length(len_x_global, len_y_global, len_z_global, nx, ny, nz) / c;
         
         Npe = n0 * len_x_global * len_y_global * len_z_global;
-        Ne = nx * ny * nz * nppc;
+        Ne = (int64_t)nx * (int64_t)ny * (int64_t)nz * (int64_t)nppc;
         we = Npe / Ne;
         eps = param.get<OPP_REAL>("eps");
 

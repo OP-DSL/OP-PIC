@@ -90,7 +90,8 @@ inline std::map<std::string, std::map<std::string, int>> get_strgrid_and_dims(
     }
 
     if ((int)points.size() != cell_counts[0] * cell_counts[1]) {
-        opp_printf("Error", "Error expected_cell_count=%d x=%d y=%d", (int)points.size(), cell_counts[0], cell_counts[1]);
+        opp_printf("get_strgrid_and_dims", "Error expected_cell_count=%d x=%d y=%d", 
+            (int)points.size(), cell_counts[0], cell_counts[1]);
         opp_abort();
     }
 

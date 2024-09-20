@@ -328,7 +328,7 @@ class Loop:
     dats: List[Dat]
     maps: List[Map]
 
-    consts: Set[str]
+    consts: Set[Const]
 
     fallback: bool
     dh_loop_required = False
@@ -456,7 +456,7 @@ class Loop:
 
         return idx
 
-    def addConst(self, const: str) -> None:
+    def addConst(self, const: Const) -> None:
         self.consts.add(const)
 
     def arg(self, x: Union[Dat, int]) -> Optional[Arg]:
@@ -491,6 +491,7 @@ class Loop:
         argsEx = "\n    ".join([str(a) for a in self.args_expanded])
         dat_str = "\n    ".join([str(d) for d in self.dats])
         map_str = "\n    ".join([str(m) for m in self.maps])
+        consts_str = "\n    ".join([str(m) for m in self.consts])
 
         if len(self.dats) > 0:
             dat_str = f"\n    {dat_str}\n"
@@ -498,8 +499,12 @@ class Loop:
         if len(self.maps) > 0:
             map_str = f"\n    {map_str}\n"
 
+        if len(self.consts) > 0:
+            consts_str = f"\n    {consts_str}\n"
+
         return (
             f"Loop at {self.loc}:\n    Name: {self.name}\n    Kernel function: {self.kernel}\n    Iterating Set: {self.iterator_set}\n    p2c_map: {self.p2c_map}\n    c2c_map: {self.c2c_map} \n\n    args:\n    {args}\n    argsEx:\n    {argsEx}\n"
             + dat_str
             + map_str
+            + consts_str
         )

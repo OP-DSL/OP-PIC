@@ -1,0 +1,31 @@
+{% extends "cpp/master_kernel.cpp.jinja" %}
+
+{#
+{% block includes %}
+{{super()}}
+    {% if user_types is not none %}
+#ifndef OP_FUN_PREFIX
+#define OP_FUN_PREFIX __host__ __device__
+#endif
+    {% endif %}
+{% endblock %}
+#}
+
+{% block const_decls %}
+    {% for const in app.consts() %}
+{{const.typ}}* {{const.ptr}}_s = nullptr;
+    {% endfor %}
+    
+OPP_INT* cells_set_size_s = nullptr;
+OPP_INT cells_set_size = -1;
+
+OPP_INT* comm_iteration_s = nullptr;
+OPP_INT comm_iteration = -1;
+{% endblock %}
+
+{% block const_decl_func %}
+    {% call(const) const_decl_func("") %}
+opp_register_const<{{const.typ}}>({{const.ptr}}_s, dim);
+        opp_mem::copy_host_to_dev<{{const.typ}}>({{const.ptr}}_s, ({{const.typ}}*)data, dim);
+    {%- endcall %}
+{% endblock %}

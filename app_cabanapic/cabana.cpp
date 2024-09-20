@@ -316,3 +316,18 @@ int main(int argc, char **argv)
 
     return 0;
 }
+
+/*
+std::vector<int> recv_data;
+OPP_RUN_ON_ROOT() {
+    recv_data.resize(OPP_comm_size);
+}
+MPI_Gather(&(p_set->size), 1, MPI_INT, recv_data.data(), 1, MPI_INT, 0, MPI_COMM_WORLD);
+std::string logg = "";
+OPP_RUN_ON_ROOT() {
+    for (int i = 0; i < OPP_comm_size; ++i) {
+        logg += std::to_string(recv_data[i]) + " ";
+    }
+    opp_printf("Main", "ts: %d | parts %s ****", OPP_main_loop_iter, logg.c_str());
+}
+*/

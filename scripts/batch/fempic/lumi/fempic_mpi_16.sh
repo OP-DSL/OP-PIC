@@ -6,7 +6,7 @@
 #SBATCH --nodes=16                   # Total number of nodes 
 #SBATCH --ntasks-per-node=8          # 8 MPI ranks per node, 16 total (2x8)
 #SBATCH --gpus-per-node=8            # Allocate one gpu per MPI rank
-#SBATCH --time=0-05:00:00            # Run time (d-hh:mm:ss)
+#SBATCH --time=0-00:50:00            # Run time (d-hh:mm:ss)
 ##SBATCH --mail-type=all             # Send email at begin and end of job
 #SBATCH --account=project_465001068  # Project for billing
 ##SBATCH --mail-user=username@domain.com
@@ -51,14 +51,24 @@ echo "Git commit " $gitcommit
 echo "********************************************************"
 cd -
 
-hdfOriginalFolder=/users/lantraza/phd/box_mesh_gen/hdf5
+hdfOriginalFolder=/project/project_465001068/box_mesh_gen/hdf5
 num_nodes=$SLURM_JOB_NUM_NODES
 
 configFile="box_fempic.param"
 file=$PWD'/'$configFile
 
-for run in 1 2 3 4; do
-    for config in 3072000 6144000; do
+monitor_gpu() {
+while true; do
+    rocm-smi
+    sleep 1
+done
+}
+
+monitor_gpu &
+monitor_pid=$!
+
+for run in 1 2 3; do # 1 2 3
+    for config in 3072000 6144000 12288000; do
             
         folder=$runFolder/$config"_mpi"
         (( totalGPUs=8*$SLURM_JOB_NUM_NODES ))
@@ -82,12 +92,18 @@ for run in 1 2 3 4; do
         if [ "$use_seg_red" -eq 1 ]; then
             sed -i "s/BOOL use_reg_red = false/BOOL use_reg_red = true/" ${currentfilename}
         fi
+        if [ "$config" -eq 12288000 ]; then
+            sed -i "s/REAL plasma_den     = 1e18/REAL plasma_den     = 9.9e17/" ${currentfilename}
+        fi
 
         # ---------------------       
         echo "RUNNING -> 1e18 On "$totalGPUs" GPUs"
         srun --cpu-bind=${CPU_BIND} ${binary} ${currentfilename} | tee $folder/log_N${num_nodes}_G${totalGPUs}_C${config}_D10_SR${use_seg_red}_R${run}.log;
 
         sed -i "s/REAL plasma_den     = 1e18/REAL plasma_den     = 1.3e18/" ${currentfilename}
+        if [ "$config" -eq 12288000 ]; then
+            sed -i "s/REAL plasma_den     = 9.9e17/REAL plasma_den     = 1.3e18/" ${currentfilename}
+        fi
         echo "RUNNING -> 1.3e18 On "$totalGPUs" GPUs"
         srun --cpu-bind=${CPU_BIND} ${binary} ${currentfilename} | tee $folder/log_N${num_nodes}_G${totalGPUs}_C${config}_D13_SR${use_seg_red}_R${run}.log;
         # ---------------------
@@ -95,8 +111,16 @@ for run in 1 2 3 4; do
         echo 'Remove /box_'$config'.hdf5 and random_100k.dat'
         rm $folder'/box_'$config'.hdf5'
         rm $folder'/random_100k.dat'
+
+        kill $monitor_pid
+        wait $monitor_pid
+
     done
 done
+
+kill $monitor_pid
+wait $monitor_pid
+
 
 echo "simulation done"
 

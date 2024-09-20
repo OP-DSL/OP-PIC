@@ -38,42 +38,52 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "opp_lib.h"
 
 //*************************************************************************************************
-inline void update_pos_kernel(const OPP_REAL* part_vel, OPP_REAL* part_pos)
+inline void update_pos_kernel(const OPP_REAL* p_vel, OPP_REAL* p_pos, OPP_INT* p_mdir)
 {
     for (int dm = 0; dm < DIM; dm++) {
         
-        part_pos[dm] += part_vel[dm] * CONST_dt[0]; // s1 = s0 + ut
+        const OPP_REAL offset = p_vel[dm] * CONST_dt[0];
+        p_pos[dm] += offset; // s1 = s0 + ut
         
         // correct for periodic boundary conditions
-        const OPP_INT n_extent_offset_int = std::abs(part_pos[dm]) + 2.0;
-        const OPP_REAL temp_pos = part_pos[dm] + n_extent_offset_int * CONST_extents[dm];
-        part_pos[dm] = std::fmod(temp_pos, CONST_extents[dm]);
+        const OPP_INT n_extent_offset_int = std::abs(p_pos[dm]) + 2.0;
+        const OPP_REAL temp_pos = p_pos[dm] + n_extent_offset_int * CONST_extents[dm];
+        p_pos[dm] = std::fmod(temp_pos, CONST_extents[dm]);
+
+        p_mdir[dm] = (offset > 0) ? 1 : -1;
     }
 }
 
 //*************************************************************************************************
-inline void move_kernel(const OPP_REAL* part_pos, const OPP_REAL* cell_pos_ll)
+inline void move_kernel(const OPP_REAL* p_pos, OPP_INT* p_mdir, const OPP_REAL* c_pos_ll)
 {
     // check for x direction movement
-    const OPP_REAL part_pos_x = part_pos[Dim::x];
-    if (part_pos_x < cell_pos_ll[Dim::x]) {
-        opp_p2c[0] = opp_c2c[CellMap::xd_y];
+    const OPP_REAL p_pos_x_diff = (p_pos[Dim::x] - c_pos_ll[Dim::x]);
+    if ((p_pos_x_diff >= 0.0) && (p_pos_x_diff <= CONST_cell_width[0])) {
+        p_mdir[Dim::x] = 0; // within cell in x direction
+    }
+    else if (p_mdir[Dim::x] > 0) {
+        opp_p2c[0] = opp_c2c[CellMap::xu_y];
 
         OPP_PARTICLE_NEED_MOVE; return;
     }
-    if (part_pos_x > (cell_pos_ll[Dim::x] + CONST_cell_width[0])) {
-        opp_p2c[0] = opp_c2c[CellMap::xu_y];
+    else if (p_mdir[Dim::x] < 0) {
+        opp_p2c[0] = opp_c2c[CellMap::xd_y];
         OPP_PARTICLE_NEED_MOVE; return;
     }
 
     // check for y direction movement
-    const OPP_REAL part_pos_y = part_pos[Dim::y];
-    if (part_pos_y < cell_pos_ll[Dim::y]) {
-        opp_p2c[0] = opp_c2c[CellMap::x_yd];
+    const OPP_REAL p_pos_y_diff = (p_pos[Dim::y] - c_pos_ll[Dim::y]);
+    if ((p_pos_y_diff >= 0.0) && (p_pos_y_diff <= CONST_cell_width[0])) { 
+        p_mdir[Dim::y] = 0; // within cell in y direction
+    }
+    else if (p_mdir[Dim::y] > 0) {
+        opp_p2c[0] = opp_c2c[CellMap::x_yu];
+
         OPP_PARTICLE_NEED_MOVE; return;
     }
-    if (part_pos_y > (cell_pos_ll[Dim::y] + CONST_cell_width[0])) {
-        opp_p2c[0] = opp_c2c[CellMap::x_yu];
+    else if (p_mdir[Dim::y] < 0) {
+        opp_p2c[0] = opp_c2c[CellMap::x_yd];
         OPP_PARTICLE_NEED_MOVE; return;
     }
 
@@ -82,19 +92,19 @@ inline void move_kernel(const OPP_REAL* part_pos, const OPP_REAL* cell_pos_ll)
 
 //*************************************************************************************************
 inline void verify_kernel(
-        const OPP_REAL* part_pos,
-        const OPP_INT* cell_global_idx,
-        OPP_INT* incorrect_part_count)
+        const OPP_REAL* p_pos,
+        const OPP_INT* c_gbl_idx,
+        OPP_INT* incorrect_count)
 {
     // get the cell boundaries for the current cell_index - using global cell index 
     int ix = -1, iy = -1;
-    RANK_TO_INDEX((*cell_global_idx), ix, iy, CONST_ndimcells[Dim::x]); 
+    RANK_TO_INDEX((*c_gbl_idx), ix, iy, CONST_ndimcells[Dim::x]); 
     
     if (ix < 0 || iy < 0)
     {
         // opp_printf("VERIFY", "Incorrect ix[%d] iy[%d] for global cell[%d] nx[%d]",
-        //     ix, iy, (*cell_global_idx), CONST_ndimcells[Dim::x]);
-        (*incorrect_part_count)++;
+        //     ix, iy, (*c_gbl_idx), CONST_ndimcells[Dim::x]);
+        (*incorrect_count)++;
         return;
     }
     
@@ -102,19 +112,19 @@ inline void verify_kernel(
     const OPP_REAL boundary_ll[DIM] = { (ix * CONST_cell_width[0]), (iy * CONST_cell_width[0]) };
  
     // check whether the current particle is within those boundaries or not!
-    const OPP_REAL part_pos_x = part_pos[Dim::x];
-    if (part_pos_x < boundary_ll[Dim::x] ||
-            part_pos_x > (boundary_ll[Dim::x] + CONST_cell_width[0])) {
+    const OPP_REAL p_pos_x = p_pos[Dim::x];
+    if (p_pos_x < boundary_ll[Dim::x] ||
+            p_pos_x > (boundary_ll[Dim::x] + CONST_cell_width[0])) {
         
-        (*incorrect_part_count)++;
+        (*incorrect_count)++;
         return;
     }
 
-    const OPP_REAL part_pos_y = part_pos[Dim::y];
-    if (part_pos_y < boundary_ll[Dim::y] ||
-            part_pos_y > (boundary_ll[Dim::y] + CONST_cell_width[0])) {
+    const OPP_REAL p_pos_y = p_pos[Dim::y];
+    if (p_pos_y < boundary_ll[Dim::y] ||
+            p_pos_y > (boundary_ll[Dim::y] + CONST_cell_width[0])) {
         
-        (*incorrect_part_count)++;
+        (*incorrect_count)++;
         return;
     }
 }

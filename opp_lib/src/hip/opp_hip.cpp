@@ -59,7 +59,6 @@ void opp_init(int argc, char **argv)
 
 #ifdef USE_MPI
     OPP_MPI_WORLD = MPI_COMM_WORLD;
-    OPP_MPI_GLOBAL = MPI_COMM_WORLD;
     
     MPI_Comm_rank(OPP_MPI_WORLD, &OPP_rank);
     MPI_Comm_size(OPP_MPI_WORLD, &OPP_comm_size);
@@ -84,8 +83,8 @@ void opp_init(int argc, char **argv)
     cutilDeviceInit(argc, argv);
 
     // cutilSafeCall(hipDeviceSetCacheConfig(hipFuncCachePreferL1));
-    cutilSafeCall(hipDeviceSetCacheConfig(hipFuncCachePreferShared));
-    cutilSafeCall(hipDeviceSetSharedMemConfig(hipSharedMemBankSizeEightByte));
+    // cutilSafeCall(hipDeviceSetCacheConfig(hipFuncCachePreferShared));
+    // cutilSafeCall(hipDeviceSetSharedMemConfig(hipSharedMemBankSizeEightByte));
 
     OPP_auto_soa = 1; // TODO : Make this configurable with args
 
@@ -536,7 +535,7 @@ void opp_print_dat_to_txtfile(opp_dat dat, const char *file_name_prefix, const c
     if (dat->dirty_hd == Dirty::Host) 
         opp_download_dat(dat);
 
-    std::string prefix = std::string(file_name_prefix) + "_c";
+    std::string prefix = std::string(file_name_prefix) + "_h";
     opp_print_dat_to_txtfile_core(dat, prefix.c_str(), file_name_suffix);
 }
 
@@ -545,7 +544,7 @@ void opp_print_map_to_txtfile(opp_map map, const char *file_name_prefix, const c
 {
     if (OPP_DBG) opp_printf("opp_print_map_to_txtfile", "writing file [%s]", file_name_suffix);
     
-    std::string prefix = std::string(file_name_prefix) + "_c";
+    std::string prefix = std::string(file_name_prefix) + "_h";
 
     opp_print_map_to_txtfile_core(map, file_name_prefix, file_name_suffix);
 }

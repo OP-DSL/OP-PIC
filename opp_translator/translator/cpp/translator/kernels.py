@@ -52,6 +52,41 @@ def updateMoveKernelArgs(entities: List[Tuple[Entity, Rewriter]], replacement: C
                 break
             token = next(tokens_iterator)
 
+def updateKernelAsLambda(entities: List[Tuple[Entity, Rewriter]], kernel_name: str) -> List[str]:
+    dependent_funcs = []
+    for entity, rewriter in filter(lambda e: isinstance(e[0], Function), entities):
+        tokens_iterator = entity.ast.get_tokens()
+        token = next(tokens_iterator)
+        for i in range(3):
+            if token is None:
+                continue        
+            elif token.spelling == "inline": 
+                replacement1 = lambda typ, _: f"auto"
+                rewriter.update(extentToSpan(token.extent), lambda s: replacement1(s, entity))
+            elif token.spelling == "void":
+                replacement2 = lambda typ, _: f""
+                rewriter.update(extentToSpan(token.extent), lambda s: replacement2(s, entity))
+            else: # not only kernel since it kernel can have dependent functions
+                replacement3 = lambda typ, _: f"{typ}_sycl = [=]"
+                rewriter.update(extentToSpan(token.extent), lambda s: replacement3(s, entity))
+                if token.spelling != kernel_name:
+                    dependent_funcs.append(token.spelling)
+                break
+            token = next(tokens_iterator)
+
+    return dependent_funcs
+
+def renameDependentFunctionCalls(entities: List[Tuple[Entity, Rewriter]], 
+                             dependent_functions: List[str], replacement: Callable[[str, Entity], str]
+) -> None:
+    for entity, rewriter in entities:
+        for node in entity.ast.walk_preorder():
+            if node.kind != CursorKind.DECL_REF_EXPR:
+                continue
+            if node.spelling in dependent_functions:
+                rewriter.update(extentToSpan(node.extent), lambda s: replacement(s, entity))
+    
+
 def renameConsts(
     entities: List[Tuple[Entity, Rewriter]], app: Application, replacement: Callable[[str, Entity], str]
 ) -> None:
@@ -115,7 +150,7 @@ def insertStride(
                 tmp = f"dat{dat_id}"
             rewriter.update(extentToSpan(subscript.extent), lambda s: f"({s}) * {stride(tmp)}")
 
-def writeSource(entities: List[Tuple[Entity, Rewriter]]) -> str:
+def writeSource(entities: List[Tuple[Entity, Rewriter]], end: str = "") -> str:
     source = ""
     while len(entities) > 0:
         for i in range(len(entities)):
@@ -130,11 +165,11 @@ def writeSource(entities: List[Tuple[Entity, Rewriter]]) -> str:
             if resolved:
                 entities.pop(i)
                 if source == "":
-                    source = rewriter.rewrite()
+                    source = rewriter.rewrite() + end
                 else:
-                    source = source + "\n\n" + rewriter.rewrite()
+                    source = source + "\n\n" + rewriter.rewrite() + end
 
-                if isinstance(entity, Type):
+                if isinstance(entity, Type) and end != ";":
                     source = source + ";"
 
                 break

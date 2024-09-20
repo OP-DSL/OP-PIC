@@ -1,5 +1,5 @@
 # System parameters
-REAL plasma_den           = 1.0e17
+REAL plasma_den           = 1.0e18
 REAL ion_velocity         = 1e8
 REAL electron_temperature = 2e8
 REAL wall_potential       = 10000000
@@ -25,7 +25,7 @@ BOOL invert_normals = false
 
 BOOL opp_auto_sort          = false
 REAL opp_allocation_multiple = 11
-INT opp_threads_per_block   = 128
+INT opp_threads_per_block   = 256
 
 BOOL opp_profile_all        = false
 INT opp_gpu_direct = 0
@@ -41,4 +41,4 @@ BOOL use_reg_red = false
 
 # HoleFill_All Sort_All Shuffle_All Sort_Periodic Shuffle_Periodic
 STRING opp_fill = Shuffle_Periodic
-INT opp_fill_period = 4
+INT opp_fill_period = 20

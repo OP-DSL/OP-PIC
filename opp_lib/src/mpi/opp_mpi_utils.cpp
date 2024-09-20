@@ -235,7 +235,7 @@ opp_dat opp_mpi_get_data(opp_dat dat)
 
     find_neighbors_set(pe_list, neighbors, sizes, &ranks_size, my_rank, comm_size, OPP_MPI_WORLD);
     
-    MPI_Request request_send[pe_list->ranks_size];
+    std::vector<MPI_Request> request_send(pe_list->ranks_size);
 
     int *rbuf;
     cap = 0;
@@ -262,7 +262,7 @@ opp_dat opp_mpi_get_data(opp_dat dat)
         opp_host_free(rbuf);
     }
 
-    MPI_Waitall(pe_list->ranks_size, request_send, MPI_STATUSES_IGNORE);
+    MPI_Waitall(pe_list->ranks_size, request_send.data(), MPI_STATUSES_IGNORE);
     
     pi_list = (halo_list)opp_host_malloc(sizeof(halo_list_core));
     
@@ -297,7 +297,7 @@ opp_dat opp_mpi_get_data(opp_dat dat)
                 dat->index, OPP_MPI_WORLD, MPI_STATUS_IGNORE);
     }
 
-    MPI_Waitall(pe_list->ranks_size, request_send, MPI_STATUSES_IGNORE);
+    MPI_Waitall(pe_list->ranks_size, request_send.data(), MPI_STATUSES_IGNORE);
     
     for (int i = 0; i < pe_list->ranks_size; i++)
         opp_host_free(sbuf_char[i]);
@@ -350,7 +350,7 @@ opp_dat opp_mpi_get_data(opp_dat dat)
             OPP_MPI_WORLD, MPI_STATUS_IGNORE);
     }
 
-    MPI_Waitall(pe_list->ranks_size, request_send, MPI_STATUSES_IGNORE);
+    MPI_Waitall(pe_list->ranks_size, request_send.data(), MPI_STATUSES_IGNORE);
     
     for (int i = 0; i < pe_list->ranks_size; i++)
         opp_host_free(sbuf[i]);

@@ -70,7 +70,7 @@ std::vector<size_t> sort_indexes(const int* cell_indices, int size)
     std::vector<size_t> idx(size);
     std::iota(idx.begin(), idx.end(), 0);
 
-    std::stable_sort(idx.begin(), idx.end(), 
+    std::sort(idx.begin(), idx.end(), // std::stable_sort(idx.begin(), idx.end(), 
         [cell_indices](size_t i1, size_t i2) 
         { 
             return cell_indices[i1] < cell_indices[i2];

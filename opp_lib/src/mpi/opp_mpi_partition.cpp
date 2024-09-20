@@ -267,7 +267,7 @@ MPI_Comm OPP_PART_WORLD;
     find_neighbors_set(pi_list, neighbors, sizes, &ranks_size, my_rank, comm_size, OPP_PART_WORLD);
 
     //  MPI_Request request_send[pi_list->ranks_size];
-    MPI_Request *request_send = (MPI_Request *)opp_host_malloc(pi_list->ranks_size * sizeof(MPI_Request));
+    std::vector<MPI_Request> request_send(pi_list->ranks_size);
 
     int *rbuf;
     cap = 0;
@@ -291,11 +291,11 @@ MPI_Comm OPP_PART_WORLD;
         count = count + sizes[i];
         opp_host_free(rbuf);
     }
-    MPI_Waitall(pi_list->ranks_size, request_send, MPI_STATUSES_IGNORE);
+    MPI_Waitall(pi_list->ranks_size, request_send.data(), MPI_STATUSES_IGNORE);
     create_import_list(map->to, temp_list, pe_list, count, neighbors, sizes, ranks_size, comm_size, my_rank);
 
     // use the import and export lists to exchange partition information of this "to" set
-    MPI_Request request_send_p[pe_list->ranks_size];
+    std::vector<MPI_Request> request_send_p(pe_list->ranks_size);
 
     // first - prepare partition information of the "to" set element to be exported
     int **sbuf = (int **)opp_host_malloc(pe_list->ranks_size * sizeof(int *));
@@ -318,7 +318,7 @@ MPI_Comm OPP_PART_WORLD;
     {
         MPI_Recv(&imp_part[pi_list->disps[i]], pi_list->sizes[i], MPI_INT, pi_list->ranks[i], 2, OPP_PART_WORLD, MPI_STATUS_IGNORE);
     }
-    MPI_Waitall(pe_list->ranks_size, request_send_p, MPI_STATUSES_IGNORE);
+    MPI_Waitall(pe_list->ranks_size, request_send_p.data(), MPI_STATUSES_IGNORE);
     for (int i = 0; i < pe_list->ranks_size; i++)
         opp_host_free(sbuf[i]);
     opp_host_free(sbuf);
@@ -377,8 +377,6 @@ MPI_Comm OPP_PART_WORLD;
     opp_host_free(pe_list->sizes);
     opp_host_free(pe_list->disps);
     opp_host_free(pe_list);
-
-    opp_host_free(request_send);
 
     return 1;
 }
@@ -660,21 +658,17 @@ MPI_Comm OPP_PART_WORLD;
     if (OPP_DBG) opp_printf("partition_all", "start");
 
     // Compute global partition range information for each set
-    int **part_range = (int **)opp_host_malloc((int)opp_sets.size() * sizeof(int *));
+    int **part_range = (int **)opp_host_malloc(opp_sets.size() * sizeof(int *));
     get_part_range(part_range, my_rank, comm_size, OPP_PART_WORLD);
 
     int sets_partitioned = 1;
     int maps_used = 0;
 
-    opp_set all_partitioned_sets[(int)opp_sets.size()];
-    int all_used_maps[(int)opp_maps.size()];
-    for (int i = 0; i < (int)opp_maps.size(); i++) 
-    {
-        all_used_maps[i] = -1;
-    }
+    std::vector<opp_set> all_partitioned_sets(opp_sets.size());
+    std::vector<int> all_used_maps(opp_maps.size(), -1);
 
     // add all particle sets to avoid partitioning errors
-    for (int i = 0; i < (int)opp_sets.size(); i++) 
+    for (size_t i = 0; i < opp_sets.size(); i++) 
     {
         opp_set set = opp_sets[i];
         if (set->is_particle)
@@ -687,16 +681,16 @@ MPI_Comm OPP_PART_WORLD;
     int error = 0;
     while (sets_partitioned < (int)opp_sets.size() && error == 0) 
     {
-        int cost[(int)opp_maps.size()];
-        for (int i = 0; i < (int)opp_maps.size(); i++)
+        std::vector<int> cost(opp_maps.size());
+        for (size_t i = 0; i < opp_maps.size(); i++)
             cost[i] = 99;
 
         // compute a "cost" associated with using each mapping table
-        for (int m = 0; m < (int)opp_maps.size(); m++) 
+        for (size_t m = 0; m < opp_maps.size(); m++) 
         {
             opp_map map = opp_maps[m];
 
-            if (linear_search(all_used_maps, map->index, 0, maps_used - 1) < 0) // if not used before
+            if (linear_search(all_used_maps.data(), map->index, 0, maps_used - 1) < 0) // if not used before
             {
                 part to_set = OPP_part_list[map->to->index];
                 part from_set = OPP_part_list[map->from->index];
@@ -705,12 +699,12 @@ MPI_Comm OPP_PART_WORLD;
                 // more than partitioning a set using a mapping to a partitioned set
                 // i.e. preferance is given to the latter over the former
                 if (from_set->is_partitioned == 1 && 
-                    compare_all_sets(map->from, all_partitioned_sets, sets_partitioned) >= 0)
+                    compare_all_sets(map->from, all_partitioned_sets.data(), sets_partitioned) >= 0)
                 {
                     cost[map->index] = 2;
                 }
                 else if (to_set->is_partitioned == 1 &&
-                        compare_all_sets(map->to, all_partitioned_sets, sets_partitioned) >= 0)
+                        compare_all_sets(map->to, all_partitioned_sets.data(), sets_partitioned) >= 0)
                 {
                     cost[map->index] = (map->dim == 1 ? 0 : 1);
                 }
@@ -719,7 +713,7 @@ MPI_Comm OPP_PART_WORLD;
 
         while (1) 
         {
-            int selected = min(cost, (int)opp_maps.size());
+            int selected = min(cost.data(), (int)opp_maps.size());
 
             if (selected >= 0) 
             {
@@ -772,7 +766,7 @@ MPI_Comm OPP_PART_WORLD;
         
         if (sets_partitioned != (int)opp_sets.size()) 
         {
-            for (int s = 0; s < (int)opp_sets.size(); s++) 
+            for (size_t s = 0; s < opp_sets.size(); s++) 
             { // for each set
                 opp_set set = opp_sets[s];
                 part P = OPP_part_list[set->index];
@@ -792,7 +786,7 @@ MPI_Comm OPP_PART_WORLD;
         }
     }
 
-    for (int i = 0; i < (int)opp_sets.size(); i++)
+    for (size_t i = 0; i < opp_sets.size(); i++)
         opp_host_free(part_range[i]);
     opp_host_free(part_range);
 }
@@ -846,8 +840,8 @@ MPI_Comm OPP_PART_WORLD;
 
         // do an allgather to findout how many elements that each process will
         // be requesting partition information about
-        int recv_count[comm_size];
-        MPI_Allgather(&count, 1, MPI_INT, recv_count, 1, MPI_INT, OPP_PART_WORLD);
+        std::vector<int> recv_count(comm_size);
+        MPI_Allgather(&count, 1, MPI_INT, recv_count.data(), 1, MPI_INT, OPP_PART_WORLD);
 
         // discover global size of these required elements
         int g_count = 0;
@@ -867,7 +861,7 @@ MPI_Comm OPP_PART_WORLD;
         // partition details
         int *g_index = (int *)opp_host_malloc(sizeof(int) * g_count);
 
-        MPI_Allgatherv(req_list, count, MPI_INT, g_index, recv_count, displs, MPI_INT, OPP_PART_WORLD);
+        MPI_Allgatherv(req_list, count, MPI_INT, g_index, recv_count.data(), displs, MPI_INT, OPP_PART_WORLD);
         opp_host_free(req_list);
 
         if (g_count > 0) 
@@ -907,7 +901,7 @@ MPI_Comm OPP_PART_WORLD;
         exp_g_index = (int *)opp_host_realloc(exp_g_index, sizeof(int) * exp_count);
 
         // now export to every MPI rank, these partition info with an all-to-all
-        MPI_Allgather(&exp_count, 1, MPI_INT, recv_count, 1, MPI_INT, OPP_PART_WORLD);
+        MPI_Allgather(&exp_count, 1, MPI_INT, recv_count.data(), 1, MPI_INT, OPP_PART_WORLD);
         disp = 0;
         opp_host_free(displs);
         displs = (int *)opp_host_malloc(comm_size * sizeof(int));
@@ -927,9 +921,9 @@ MPI_Comm OPP_PART_WORLD;
         g_index = (int *)opp_host_malloc(sizeof(int) * g_count);
 
 
-        MPI_Allgatherv(exp_g_index, exp_count, MPI_INT, g_index, recv_count, displs, MPI_INT, OPP_PART_WORLD);
+        MPI_Allgatherv(exp_g_index, exp_count, MPI_INT, g_index, recv_count.data(), displs, MPI_INT, OPP_PART_WORLD);
 
-        MPI_Allgatherv(exp_index, exp_count, MPI_INT, all_imp_index, recv_count, displs, MPI_INT, OPP_PART_WORLD);
+        MPI_Allgatherv(exp_index, exp_count, MPI_INT, all_imp_index, recv_count.data(), displs, MPI_INT, OPP_PART_WORLD);
 
         opp_host_free(exp_index);
         opp_host_free(exp_g_index);
@@ -990,8 +984,8 @@ MPI_Comm OPP_PART_WORLD;
     /*--STEP 1 - Create Imp/Export Lists for reverse migrating elements ----------*/
 
     // create imp/exp lists for reverse migration
-    halo_list pe_list[(int)opp_sets.size()]; // export list for each set
-    halo_list pi_list[(int)opp_sets.size()]; // import list for each set
+    std::vector<halo_list> pe_list(opp_sets.size()); // export list for each set
+    std::vector<halo_list> pi_list(opp_sets.size()); // import list for each set
 
     // create partition export lists
     int *temp_list;
@@ -1388,7 +1382,7 @@ MPI_Comm OPP_PART_WORLD;
     }
 
     // cleanup : destroy pe_list, pi_list
-    for (int s = 0; s < (int)opp_sets.size(); s++)  // for each set
+    for (size_t s = 0; s < opp_sets.size(); s++)  // for each set
     { 
         opp_set set = opp_sets[s];
 

@@ -33,12 +33,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <mpi.h>
 #include <opp_lib.h>
-#include <cmath>
-#include <sys/queue.h>
 
 /** extern variables for halo creation and exchange**/
 extern MPI_Comm OPP_MPI_WORLD;
-extern MPI_Comm OPP_MPI_GLOBAL;
 
 /*******************************************************************************
 * MPI halo list data type
@@ -393,8 +390,8 @@ inline std::vector<int> get_local_cell_count_array(const int num_cells, const in
 template <typename T> 
 inline void opp_uniform_scatter_array(T *g_array, T *l_array, int g_size, int l_size, int elem_size) 
 {
-    int64_t *sendcnts = new int64_t[OPP_comm_size];
-    int64_t *displs = new int64_t[OPP_comm_size];
+    std::vector<int64_t> sendcnts(OPP_comm_size);
+    std::vector<int64_t> displs(OPP_comm_size);
     int64_t disp = 0;
 
     for (int i = 0; i < OPP_comm_size; i++) 
@@ -422,12 +419,10 @@ inline void opp_uniform_scatter_array(T *g_array, T *l_array, int g_size, int l_
     MPI_Irecv((char*)l_array, static_cast<int64_t>(l_size * elem_size * sizeof(T)), 
                     MPI_CHAR, OPP_ROOT, 11010, MPI_COMM_WORLD, &recv_req[0]);
     MPI_Waitall(recv_req.size(), recv_req.data(), MPI_STATUSES_IGNORE);
-    if (OPP_rank == OPP_ROOT) MPI_Waitall(send_req.size(), send_req.data(), MPI_STATUSES_IGNORE);
+    if (OPP_rank == OPP_ROOT) 
+        MPI_Waitall(send_req.size(), send_req.data(), MPI_STATUSES_IGNORE);
 
     MPI_Barrier(MPI_COMM_WORLD);
-
-    delete[] sendcnts;
-    delete[] displs;
 }
 
 //*******************************************************************************

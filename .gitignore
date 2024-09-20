@@ -4,7 +4,7 @@
 
 _build/
 
-opp_venv/
+opp_venv*
 
 MPI_*
 OMP_*
@@ -44,6 +44,7 @@ app_cabanapic/omp/
 app_cabanapic/mpi/
 app_cabanapic/cuda/
 app_cabanapic/hip/
+app_cabanapic/sycl/
 app_cabanapic/files/
 app_cabanapic/cabana_opp.cpp
 app_fempic/seq/
@@ -51,6 +52,7 @@ app_fempic/omp/
 app_fempic/mpi/
 app_fempic/cuda/
 app_fempic/hip/
+app_fempic/sycl/
 app_fempic/files/
 app_fempic/fempic_opp.cpp
 app_fempic/fempic_hdf5_opp.cpp
@@ -59,6 +61,7 @@ app_neso_advection/omp/
 app_neso_advection/mpi/
 app_neso_advection/cuda/
 app_neso_advection/hip/
+app_neso_advection/sycl/
 app_neso_advection/files/
 app_neso_advection/advec_opp.cpp
 app_simpic/seq/
@@ -66,5 +69,7 @@ app_simpic/omp/
 app_simpic/mpi/
 app_simpic/cuda/
 app_simpic/hip/
+app_simpic/sycl/
 app_simpic/files/
 app_simpic/simpic_opp.cpp
+sort_logs*

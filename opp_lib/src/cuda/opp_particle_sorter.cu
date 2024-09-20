@@ -67,7 +67,7 @@ __global__ void copy_int(const int* in_dat_d, int* out_dat_d, const int* indices
         const int idx = indices[tid];
         for (int d = 0; d < dim; d++)
         {
-            out_dat_d[out_offset + tid + d * in_stride] = in_dat_d[in_offset + idx + d * out_stride];
+            out_dat_d[out_offset + tid + d * out_stride] = in_dat_d[in_offset + idx + d * in_stride];
         }
     }
 }
@@ -82,7 +82,7 @@ __global__ void copy_double(const double* in_dat_d, double* out_dat_d, const int
         const int idx = indices[tid];
         for (int d = 0; d < dim; d++)
         {
-            out_dat_d[out_offset + tid + d * in_stride] = in_dat_d[in_offset + idx + d * out_stride];
+            out_dat_d[out_offset + tid + d * out_stride] = in_dat_d[in_offset + idx + d * in_stride];
         }
     }
 }
@@ -292,7 +292,7 @@ __global__ void copy_intFromTo(const int* in_dat_d, int* out_dat_d, const int* f
         const int t_idx = to_idx[tid];
         for (int d = 0; d < dim; d++)
         {
-            out_dat_d[out_offset + t_idx + d * in_stride] = in_dat_d[in_offset + f_idx + d * out_stride];
+            out_dat_d[out_offset + t_idx + d * out_stride] = in_dat_d[in_offset + f_idx + d * in_stride];
         }
     }
 }
@@ -308,7 +308,7 @@ __global__ void copy_doubleFromTo(const double* in_dat_d, double* out_dat_d, con
         const int t_idx = to_idx[tid];
         for (int d = 0; d < dim; d++)
         {
-            out_dat_d[out_offset + t_idx + d * in_stride] = in_dat_d[in_offset + f_idx + d * out_stride];
+            out_dat_d[out_offset + t_idx + d * out_stride] = in_dat_d[in_offset + f_idx + d * in_stride];
         }
     }
 }

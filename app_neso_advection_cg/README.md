@@ -40,17 +40,20 @@ Code generation can be done by invoking the below command.
 
 `python3 $OPP_TRANSLATOR -v -I$OPP_PATH/include/ --file_paths advec.cpp`
 
-Once the code-generator is invoked, a `advec_opp.cpp` file and `seq`, `omp`, `mpi`, `cuda` and `hip` folders, including `opp_kernels.<cpp|cu>` and a loop kernel header file per unique `opp_par_loop` or `opp_particle_move` loop will get generated.
+Once the code-generator is invoked, a `advec_opp.cpp` file and `seq`, `omp`, `mpi`, `cuda`, `hip` and `sycl` folders, including `opp_kernels.<cpp|cu>` and a loop kernel header file per unique `opp_par_loop` or `opp_particle_move` loop will get generated.
 
 ## Compile
 Once the platform specific target files are generated, use the provided `MakeFile` to compile the application.
  * `make seq`
- * `make omp`
  * `make mpi`
+ * `make omp`
+ * `make omp_mpi`
  * `make cuda`
  * `make cuda_mpi`
  * `make hip`
  * `make hip_mpi`
+ * `make sycl`
+ * `make sycl_mpi`
 
 ### Configuration
 An example configuration file is provided in `OP-PIC/app_neso_advection_cg/configs` folder.

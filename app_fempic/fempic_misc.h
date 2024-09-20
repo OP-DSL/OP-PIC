@@ -194,6 +194,23 @@ inline void print_per_cell_particle_counts(opp_dat c_part_count, opp_dat part_me
 }
 
 /*************************************************************************************************
+ * This is a utility function to get the total particles iterated during the simulation
+*/
+inline void get_global_values(const int64_t total_part_iter, int64_t& gbl_total_part_iter, 
+    int64_t& gbl_max_iter, int64_t& gbl_min_iter) {
+
+#ifdef USE_MPI
+        MPI_Reduce(&total_part_iter, &gbl_total_part_iter, 1, MPI_INT64_T, MPI_SUM, OPP_ROOT, MPI_COMM_WORLD);
+        MPI_Reduce(&total_part_iter, &gbl_max_iter, 1, MPI_INT64_T, MPI_MAX, 0, MPI_COMM_WORLD);
+        MPI_Reduce(&total_part_iter, &gbl_min_iter, 1, MPI_INT64_T, MPI_MIN, 0, MPI_COMM_WORLD);
+#else
+        gbl_total_part_iter = total_part_iter;
+        gbl_max_iter = total_part_iter;
+        gbl_min_iter = total_part_iter;
+#endif
+}
+
+/*************************************************************************************************
  * This is a utility function create a global level log string using local values
  * @param max_c_ef - this is already reduced glocally by the opp_par_loop
  * @param max_n_potential - this is already reduced glocally by the opp_par_loop
@@ -207,7 +224,9 @@ inline std::string get_global_level_log(double max_c_ef, double max_n_potential,
 {
     std::string log = "";
     int64_t global_part_size = 0, global_inj_size = 0, global_removed = 0;
-    int global_max_comm_iteration = 0;
+    int64_t glb_parts, gbl_max_parts, gbl_min_parts;
+    int64_t glb_part_comms, gbl_max_part_comms, gbl_min_part_comms;
+    int global_max_comm_iteration = 0, global_move_max_hops = -1;
 
 #ifdef USE_MPI
     MPI_Reduce(&OPP_max_comm_iteration, &global_max_comm_iteration, 1, MPI_INT, MPI_MAX, OPP_ROOT, MPI_COMM_WORLD);
@@ -218,13 +237,18 @@ inline std::string get_global_level_log(double max_c_ef, double max_n_potential,
     MPI_Reduce(&temp_local_part_count, &global_part_size, 1, MPI_INT64_T, MPI_SUM, OPP_ROOT, MPI_COMM_WORLD);
     MPI_Reduce(&temp_local_parts_injected, &global_inj_size, 1, MPI_INT64_T, MPI_SUM, OPP_ROOT, MPI_COMM_WORLD);
     MPI_Reduce(&temp_local_part_removed, &global_removed, 1, MPI_INT64_T, MPI_SUM, OPP_ROOT, MPI_COMM_WORLD);
+    MPI_Reduce(&OPP_move_max_hops, &global_move_max_hops, 1, MPI_INT, MPI_MAX, OPP_ROOT, MPI_COMM_WORLD);
     
 #else
     global_part_size = local_part_count;
     global_inj_size = local_parts_injected;
     global_removed = local_part_removed;
     global_max_comm_iteration = OPP_max_comm_iteration;
+    global_move_max_hops = OPP_move_max_hops;
 #endif
+
+    get_global_values(local_part_count, glb_parts, gbl_max_parts, gbl_min_parts);   
+    get_global_values(OPP_part_comm_count_per_iter, glb_part_comms, gbl_max_part_comms, gbl_min_part_comms);
 
     log += std::string("\t np: ") + str(global_part_size, "%" PRId64);
     log += std::string(" (") + str(global_inj_size, "%" PRId64);
@@ -232,6 +256,15 @@ inline std::string get_global_level_log(double max_c_ef, double max_n_potential,
     log += std::string(" removed)\t max c_ef: ") + str(max_c_ef, "%2.15lE");
     log += std::string(" max n_pot: ") + str(max_n_potential, "%2.15lE");
     log += std::string(" max_comm_iteration: ") + str(global_max_comm_iteration, "%d");
+
+    log += std::string(" | Gbl parts: ") + str(glb_parts, "%" PRId64);
+    log += std::string(" Min: ") + str(gbl_min_parts, "%" PRId64);
+    log += std::string(" Max: ") + str(gbl_max_parts, "%" PRId64);
+    log += std::string(" | Gbl comms: ") + str(glb_part_comms, "%" PRId64);
+    log += std::string(" Min: ") + str(gbl_min_part_comms, "%" PRId64);
+    log += std::string(" Max: ") + str(gbl_max_part_comms, "%" PRId64);
+    log += std::string(" | max hops: ") + str(global_move_max_hops, "%d");
+
     return log;
 }
 

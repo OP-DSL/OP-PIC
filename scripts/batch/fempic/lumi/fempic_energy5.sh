@@ -43,7 +43,7 @@ echo "Git commit " $gitcommit
 echo "********************************************************"
 cd -
 
-hdfOriginalFolder=/users/lantraza/phd/box_mesh_gen/hdf5
+hdfOriginalFolder=/project/project_465001068/box_mesh_gen/hdf5
 num_nodes=$SLURM_JOB_NUM_NODES
 
 configFile="box_fempic.param"
@@ -79,6 +79,46 @@ for run in 1 2 3; do
         sed -i "s/BOOL use_reg_red = false/BOOL use_reg_red = true/" ${currentfilename}
         echo "RUNNING -> 1e18 On "$totalGPUs" GPUs with seg red"
         srun --cpu-bind=${CPU_BIND} ${binary} ${currentfilename} | tee $folder/log_N${num_nodes}_G${totalGPUs}_C${config}_D10_SR_R${run}.log;
+        # ---------------------
+
+        echo 'Remove /box_'$config'.hdf5 and random_100k.dat'
+        rm $folder'/box_'$config'.hdf5'
+        rm $folder'/random_100k.dat'
+    done
+done
+
+for run in 1 2 3; do
+    for config in 1536000; do
+            
+        folder=$runFolder/$config"_mpi"
+        (( totalGPUs=8*$SLURM_JOB_NUM_NODES ))
+
+        echo "Running MPI " $config $folder
+
+        mkdir -p $folder
+        cp $file $folder
+        currentfilename=$folder/$configFile
+
+        copyCommand=$hdfOriginalFolder'/box_'$config'.hdf5 '$folder'/'
+        echo 'Copy box_'$config'.hdf5'
+        cp $copyCommand
+        copyCommandA=$hdfOriginalFolder'/random_100k.dat '$folder'/'
+        echo 'Copy random_100k.dat'
+        cp $copyCommandA
+
+        sed -i "s/REAL plasma_den     = 1e18/REAL plasma_den     = 1.3e18/" ${currentfilename}
+
+        escaped_folder="${folder//\//\\/}"
+        sed -i "s/STRING hdf_filename = <path_to_hdf5_mesh_file>/STRING hdf_filename = ${escaped_folder}\/box_${config}.hdf5/" ${currentfilename}
+        sed -i "s/STRING rand_file    = <path_to_hdf5_mesh_file>/STRING rand_file    = ${escaped_folder}\/random_100k.dat/" ${currentfilename}
+
+        # ---------------------       
+        echo "RUNNING -> 1e18 On "$totalGPUs" GPUs with unsafe atomics"
+        srun --cpu-bind=${CPU_BIND} ${binary} ${currentfilename} | tee $folder/log_N${num_nodes}_G${totalGPUs}_C${config}_D13_UA_R${run}.log;
+
+        sed -i "s/BOOL use_reg_red = false/BOOL use_reg_red = true/" ${currentfilename}
+        echo "RUNNING -> 1e18 On "$totalGPUs" GPUs with seg red"
+        srun --cpu-bind=${CPU_BIND} ${binary} ${currentfilename} | tee $folder/log_N${num_nodes}_G${totalGPUs}_C${config}_D13_SR_R${run}.log;
         # ---------------------
 
         echo 'Remove /box_'$config'.hdf5 and random_100k.dat'

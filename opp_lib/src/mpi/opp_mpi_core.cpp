@@ -33,7 +33,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opp_mpi_core.h>
 
 MPI_Comm OPP_MPI_WORLD;
-MPI_Comm OPP_MPI_GLOBAL;
 
 void opp_halo_create();
 void opp_part_comm_init();
@@ -125,7 +124,7 @@ void opp_partition_core(std::string lib_name, opp_set prime_set, opp_map prime_m
         recv_vec.resize(OPP_comm_size * 3);
 
         std::vector<int> sizes{ set->size, set->exec_size, set->nonexec_size };
-        MPI_Gather(&(sizes[0]), 3, MPI_INT, &(recv_vec[0]), 3, MPI_INT, OPP_ROOT, OPP_MPI_WORLD);
+        MPI_Gather(&(sizes[0]), 3, MPI_INT, &(recv_vec[0]), 3, MPI_INT, OPP_ROOT, MPI_COMM_WORLD);
     }
 
     // print the set sizes of all ranks after partitioning
@@ -156,10 +155,8 @@ std::map<int, opp_dat> negative_mapping_indices;
 //*******************************************************************************
 void opp_sanitize_all_maps()
 {
-    for (int i = 0; i < (int)opp_maps.size(); i++)
+    for (opp_map& map : opp_maps)
     {
-        opp_map map = opp_maps[i];
-
         if (map->dim == 1) continue;
 
         if (OPP_DBG) opp_printf("opp_sanitize_all_maps", " map: %s | ptr: %p | dim: %d", map->name, map->map, map->dim);
@@ -168,7 +165,7 @@ void opp_sanitize_all_maps()
         opp_dat dat = opp_decl_mesh_dat(map->from, map->dim, DT_INT, (char*)map->map, name.c_str());  
         negative_mapping_indices[map->index] = dat;
 
-        memset(dat->data, 0, (map->from->size * dat->size));
+        memset(dat->data, 0, ((size_t)(map->from->size) * dat->size));
 
         for (int n = 0; n < map->from->size; n++)
         {
@@ -189,10 +186,10 @@ void opp_sanitize_all_maps()
 
             if (positive_mapping >= 0)
             {
-                for (int i : index)
+                for (int j : index)
                 {
-                    map->map[i] = positive_mapping;
-                    ((int*)dat->data)[i] = 1;
+                    map->map[j] = positive_mapping;
+                    ((OPP_INT*)dat->data)[j] = 1;
                 }
             }
             else
@@ -231,10 +228,8 @@ void opp_sanitize_all_maps()
 //*******************************************************************************
 void opp_desanitize_all_maps()
 {
-    for (int i = 0; i < (int)opp_maps.size(); i++)
+    for (opp_map& map : opp_maps)
     {
-        opp_map map = opp_maps[i];
-
         if (map->dim == 1) continue;
 
         if (OPP_DBG) opp_printf("opp_desanitize_all_maps", " map: %s | ptr: %p | dim: %d", map->name, map->map, map->dim);

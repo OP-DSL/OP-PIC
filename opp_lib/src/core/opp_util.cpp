@@ -482,7 +482,8 @@ void opp_decompress_read(const std::string &filename, size_t originalSize, int* 
         uLong destSize = originalSize;
         if (uncompress(reinterpret_cast<Bytef*>(data), &destSize, 
                         compressedData.data(), compressedSize) != Z_OK) {
-            std::cerr << "Decompression failed!" << std::endl;
+            std::cerr << "Decompression failed! filename:" << filename << " originalSize:" << 
+                originalSize << " compressedSize:" << compressedSize << std::endl;
             opp_abort("opp_decompress_read DECOMPRESS Failed");
         }
 

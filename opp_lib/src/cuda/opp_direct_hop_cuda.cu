@@ -688,6 +688,8 @@ void CellMapper::convertToLocalMappingsIncRank(const opp_dat global_cell_id_dat)
     if (comm->rank_intra == 0) {
         MPI_CHECK(MPI_Allreduce(MPI_IN_PLACE, structMeshToCellMapping, globalGridSize, 
                         MPI_INT, MPI_MAX, comm->comm_inter));
+        MPI_CHECK(MPI_Allreduce(MPI_IN_PLACE, structMeshToRankMapping, globalGridSize, 
+            MPI_INT, MPI_MIN, comm->comm_inter));
     }
 
     waitBarrier();
@@ -710,7 +712,7 @@ void CellMapper::generateStructuredMeshFromFile(opp_set set, const opp_dat c_gbl
 
 #ifdef USE_MPI
     int set_size = 0;
-    MPI_Reduce(&(set->size), &set_size, 1, MPI_INT, MPI_SUM, 0, OPP_MPI_WORLD);
+    MPI_Allreduce(&(set->size), &set_size, 1, MPI_INT, MPI_SUM, OPP_MPI_WORLD);
 
     if (comm->rank_intra == 0) // read only with the node-main rank
 #else

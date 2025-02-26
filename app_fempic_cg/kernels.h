@@ -42,7 +42,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define KERNEL_DET_FIELDS       4
 #define KERNEL_NEIGHB_C         4
 #define KERNEL_DIM              3
-#define KERNEL_TOLERENCE        -1e-18
+#define KERNEL_TOLERENCE        1e-18
 
 //*************************************************************************************************
 inline void init_boundary_pot_kernel(
@@ -118,10 +118,10 @@ inline void move_kernel(
             cell_det[i * KERNEL_DET_FIELDS + 3] * point_pos[2]);
     }  
 
-    if ((point_lc[0] > KERNEL_TOLERENCE) && ((point_lc[0] - 1.0) < KERNEL_TOLERENCE) &&
-        (point_lc[1] > KERNEL_TOLERENCE) && ((point_lc[1] - 1.0) < KERNEL_TOLERENCE) &&
-        (point_lc[2] > KERNEL_TOLERENCE) && ((point_lc[2] - 1.0) < KERNEL_TOLERENCE) &&
-        (point_lc[3] > KERNEL_TOLERENCE) && ((point_lc[3] - 1.0) < KERNEL_TOLERENCE)) { 
+    if ((point_lc[0] > (-1) * KERNEL_TOLERENCE) && ((point_lc[0] - 1.0) < KERNEL_TOLERENCE) &&
+        (point_lc[1] > (-1) * KERNEL_TOLERENCE) && ((point_lc[1] - 1.0) < KERNEL_TOLERENCE) &&
+        (point_lc[2] > (-1) * KERNEL_TOLERENCE) && ((point_lc[2] - 1.0) < KERNEL_TOLERENCE) &&
+        (point_lc[3] > (-1) * KERNEL_TOLERENCE) && ((point_lc[3] - 1.0) < KERNEL_TOLERENCE)) { 
             
         OPP_PARTICLE_MOVE_DONE;
         return;

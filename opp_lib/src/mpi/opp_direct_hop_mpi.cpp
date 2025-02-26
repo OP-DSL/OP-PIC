@@ -361,7 +361,7 @@ void CellMapper::convertToLocalMappings(const opp_dat global_cell_id_dat) {
 
     convertToLocalMappings_seq(globalToLocalCellIndexMapper);
 
-    MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
+    MPI_CHECK(MPI_Barrier(OPP_MPI_WORLD));
 
     if (comm->rank_intra == 0) {
         MPI_CHECK(MPI_Allreduce(MPI_IN_PLACE, structMeshToCellMapping, globalGridSize, 
@@ -416,6 +416,8 @@ void CellMapper::convertToLocalMappingsIncRank(const opp_dat global_cell_id_dat)
     if (comm->rank_intra == 0) {
         MPI_CHECK(MPI_Allreduce(MPI_IN_PLACE, structMeshToCellMapping, globalGridSize, 
                         MPI_INT, MPI_MAX, comm->comm_inter));
+        MPI_CHECK(MPI_Allreduce(MPI_IN_PLACE, structMeshToRankMapping, globalGridSize, 
+                        MPI_INT, MPI_MIN, comm->comm_inter));
     }
 
     waitBarrier();
@@ -436,7 +438,7 @@ void CellMapper::generateStructuredMeshFromFile(opp_set set, const opp_dat c_gbl
     opp_profiler->start("Setup_Mover_s0");
 
     int set_size = 0;
-    MPI_Reduce(&(set->size), &set_size, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_Allreduce(&(set->size), &set_size, 1, MPI_INT, MPI_SUM, OPP_MPI_WORLD);
 
     if (comm->rank_intra == 0) { // read only with the node-main rank   
         std::stringstream s;
@@ -604,7 +606,7 @@ void CellMapper::generateStructuredMesh(opp_set set, const opp_dat c_gbl_id,
     // Step Add : Dump the structured mesh to a file, if requested 
     if (OPP_dh_data_dump) {
         int set_size = 0;
-        MPI_Reduce(&(set->size), &set_size, 1, MPI_INT, MPI_SUM, OPP_ROOT, MPI_COMM_WORLD);
+        MPI_Reduce(&(set->size), &set_size, 1, MPI_INT, MPI_SUM, OPP_ROOT, OPP_MPI_WORLD);
 
         if (OPP_rank == OPP_ROOT) {
 

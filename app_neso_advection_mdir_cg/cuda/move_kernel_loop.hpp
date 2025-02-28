@@ -210,7 +210,7 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
         
         // check whether particles need to be moved via the global move routine
         num_blocks = (OPP_iter_end - OPP_iter_start - 1) / block_size + 1;
-        opp_dev_checkForGlobalMove2D_kernel<<<num_blocks, block_size, 0, *opp_stream>>>(
+        opp_dev_checkForGlobalMove2D_kernel<<<num_blocks, block_size>>>(
             (OPP_REAL*)args[0].data_d,    // p_pos 
             (OPP_INT *)args[3].data_d,    // p2c_map
             cellMapper->structMeshToCellMapping_d, 
@@ -253,7 +253,7 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
     opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_dat2_stride_d, &opp_k2_dat2_stride, &(args[2].dat->set->set_capacity), 1);
 
     opp_profiler->start("move_kernel_only");
-    opp_dev_move_kernel<<<num_blocks, block_size, 0, *opp_stream>>>(
+    opp_dev_move_kernel<<<num_blocks, block_size>>>(
         (OPP_REAL *)args[0].data_d,    // p_pos
         (OPP_INT *)args[1].data_d,    // p_mdir
         (OPP_REAL *)args[2].data_d,    // c_pos_ll
@@ -301,7 +301,7 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
             opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_dat2_stride_d, &opp_k2_dat2_stride, &(args[2].dat->set->set_capacity), 1);
 
             opp_profiler->start("move_kernel_only");
-            opp_dev_move_kernel<<<num_blocks, block_size, 0, *opp_stream>>>(
+            opp_dev_move_kernel<<<num_blocks, block_size>>>(
                 (OPP_REAL *)args[0].data_d,    // p_pos
                 (OPP_INT *)args[1].data_d,    // p_mdir
                 (OPP_REAL *)args[2].data_d,    // c_pos_ll
@@ -338,7 +338,7 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
         opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_dat2_stride_d, &opp_k2_dat2_stride, &(args[2].dat->set->set_capacity), 1);
 
         opp_profiler->start("move_kernel_only");
-        opp_dev_move_kernel<<<num_blocks, block_size, 0, *opp_stream>>>(
+        opp_dev_move_kernel<<<num_blocks, block_size>>>(
             (OPP_REAL *)args[0].data_d,    // p_pos
             (OPP_INT *)args[1].data_d,    // p_mdir
             (OPP_REAL *)args[2].data_d,    // c_pos_ll

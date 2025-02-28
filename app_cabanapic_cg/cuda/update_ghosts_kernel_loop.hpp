@@ -137,7 +137,7 @@ void opp_par_loop_all__update_ghosts_kernel(opp_set set,
         num_blocks = (end - start - 1) / block_size + 1;
 
         {
-            opp_dev_update_ghosts_kernel<<<num_blocks, block_size, 0, *opp_stream>>>(
+            opp_dev_update_ghosts_kernel<<<num_blocks, block_size>>>(
                 (OPP_INT *)args[0].data_d,     // c_mask_ug
                 (OPP_REAL *)args[1].data_d,     // c_j
                 args[2].map_data_d,     // c2cug0_map

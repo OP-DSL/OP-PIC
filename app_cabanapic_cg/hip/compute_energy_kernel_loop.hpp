@@ -126,7 +126,7 @@ void opp_par_loop_all__compute_energy_kernel(opp_set set,
         const OPP_INT start = 0;
         const OPP_INT end = iter_size;
         {
-            opp_dev_compute_energy_kernel<<<num_blocks, block_size, (reduction_size * block_size), *opp_stream>>>(
+            opp_dev_compute_energy_kernel<<<num_blocks, block_size, (reduction_size * block_size)>>>(
                 (OPP_INT *)args[0].data_d,     // c_mask_ghost
                 (OPP_REAL *)args[1].data_d,     // c_e
                 (OPP_REAL *)args[2].data_d,

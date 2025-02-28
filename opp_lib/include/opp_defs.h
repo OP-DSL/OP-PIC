@@ -99,11 +99,11 @@ namespace opp {
 #if defined(USE_SYCL)
     extern sycl::queue* opp_queue;
 #elif defined(USE_CUDA)
-    #include <cuda_runtime.h>
-    extern cudaStream_t* opp_stream;
+    // #include <cuda_runtime.h>
+    // extern cudaStream_t* opp_stream;
 #elif defined(USE_HIP)
-    #include <hip/hip_runtime_api.h>
-    extern hipStream_t* opp_stream;
+    // #include <hip/hip_runtime_api.h>
+    // extern hipStream_t* opp_stream;
 #endif
 
 constexpr double MAX_REAL = std::numeric_limits<double>::max();

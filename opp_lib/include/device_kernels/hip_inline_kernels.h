@@ -455,13 +455,13 @@ void init_arrays(const int reduc_dim, const size_t operating_size, const size_t 
     opp_profiler->start("SRM_Init");
     
     const size_t num_blocks1 = (operating_size - 1) / OPP_gpu_threads_per_block + 1;
-    opp_sr::reset_values<OPP_INT> <<<num_blocks1, OPP_gpu_threads_per_block, 0, *opp_stream>>>(
+    opp_sr::reset_values<OPP_INT> <<<num_blocks1, OPP_gpu_threads_per_block>>>(
         opp_get_dev_raw_ptr<OPP_INT>(keys1), 0, keys1.size());
-    opp_sr::sequence_array<<<num_blocks1, OPP_gpu_threads_per_block, 0, *opp_stream>>>(
+    opp_sr::sequence_array<<<num_blocks1, OPP_gpu_threads_per_block>>>(
         opp_get_dev_raw_ptr<OPP_INT>(keys2), 0, keys2.size());
     
     const size_t num_blocks2 = (values2.size() - 1) / OPP_gpu_threads_per_block + 1;
-    opp_sr::reset_values<T> <<<num_blocks2, OPP_gpu_threads_per_block, 0, *opp_stream>>>(
+    opp_sr::reset_values<T> <<<num_blocks2, OPP_gpu_threads_per_block>>>(
         opp_get_dev_raw_ptr<T>(values2), 0, values2.size());
 
     OPP_DEVICE_SYNCHRONIZE();
@@ -496,7 +496,7 @@ void do_segmented_reductions(opp_arg arg, const int64_t iter_size,
 
     // Sort values according to keys2
     opp_profiler->start("SRM_AssignByKey"); 
-    opp_sr::set_values_by_key<T> <<<num_blocks, OPP_gpu_threads_per_block, 0, *opp_stream>>>(
+    opp_sr::set_values_by_key<T> <<<num_blocks, OPP_gpu_threads_per_block>>>(
         opp_get_dev_raw_ptr<OPP_INT>(keys2), opp_get_dev_raw_ptr<T>(values1),
         opp_get_dev_raw_ptr<T>(values2),
         0, iter_size, dat->dim, iter_size, iter_size);
@@ -523,7 +523,7 @@ void do_segmented_reductions(opp_arg arg, const int64_t iter_size,
     // Assign reduced values to the nodes using keys/values
     opp_profiler->start("SRM_Assign");
     const int64_t num_blocks2 = reduced_size / OPP_gpu_threads_per_block + 1;
-    opp_sr::set_values<T> <<<num_blocks2, OPP_gpu_threads_per_block, 0, *opp_stream>>> (
+    opp_sr::set_values<T> <<<num_blocks2, OPP_gpu_threads_per_block>>> (
         opp_get_dev_raw_ptr<OPP_INT>(keys2),
         opp_get_dev_raw_ptr<T>(values1), (T *)dat->data_d,
         0, reduced_size, dat->dim, iter_size, dat->set->set_capacity);

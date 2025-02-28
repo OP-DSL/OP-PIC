@@ -735,7 +735,7 @@ void opp_part_pack_and_exchange_device_direct(opp_set set)
 
     // since move particles ids are extracted already, mark cell index as MAX_CELL_ID to remove from current rank
     const int nblocks = (OPP_move_count_h - 1) / threads + 1;
-    setArrayToMaxCID<<<nblocks,threads, 0, *opp_stream>>> (
+    setArrayToMaxCID<<<nblocks,threads>>> (
         (OPP_INT*)set->mesh_relation_dat->data_d,
         (OPP_INT*)thrust::raw_pointer_cast(OPP_move_particle_indices_dv.data()),
         OPP_move_count_h);
@@ -863,7 +863,7 @@ void opp_part_unpack_device_direct(opp_set set)
 
                 if (strcmp(dat->type, "double") == 0)
                 {
-                    copy_doubleY<<<nblocks,threads, 0, *opp_stream>>> (
+                    copy_doubleY<<<nblocks,threads>>> (
                         (OPP_REAL*)(recv_buff + offset),
                         (OPP_REAL*)(dat->data_d + particle_start[i] * dat_per_dim_size),
                         recv_count, set->set_capacity, dat->dim, recv_count);
@@ -874,7 +874,7 @@ void opp_part_unpack_device_direct(opp_set set)
 
                     if (strcmp(dat->name, "p_index") == 0) x = 111;
 
-                    copy_intY<<<nblocks,threads, 0, *opp_stream>>> (
+                    copy_intY<<<nblocks,threads>>> (
                         (OPP_INT*)(recv_buff + offset),
                         (OPP_INT*)(dat->data_d + particle_start[i] * dat_per_dim_size),
                         recv_count, set->set_capacity, dat->dim, recv_count, x);

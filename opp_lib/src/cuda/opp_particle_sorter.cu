@@ -98,7 +98,7 @@ void sort_dat_according_to_index_int(opp_dat dat, const thrust::device_vector<in
     // copy_according_to_index<int>(dat->thrust_int, dat->thrust_int_sort, new_idx_dv, 
     //         set_capacity, set_capacity, 0, out_start_idx, size, dat->dim);
     const int nblocks  = (size - 1) / opp_const_threads_per_block + 1;
-    copy_from<OPP_INT> <<<nblocks, opp_const_threads_per_block, 0, *opp_stream>>> (
+    copy_from<OPP_INT> <<<nblocks, opp_const_threads_per_block>>> (
         opp_get_dev_raw_ptr(*(dat->thrust_int)),
         opp_get_dev_raw_ptr(*(dat->thrust_int_sort)),
         opp_get_dev_raw_ptr(new_idx_dv),
@@ -136,7 +136,7 @@ void sort_dat_according_to_index_double(opp_dat dat, const thrust::device_vector
     // copy_according_to_index<double>(dat->thrust_real, dat->thrust_real_sort, new_idx_dv, 
     //         set_capacity, set_capacity, 0, out_start_idx, size, dat->dim);
     const int nblocks  = (size - 1) / opp_const_threads_per_block + 1;
-    copy_from<OPP_REAL> <<<nblocks, opp_const_threads_per_block, 0, *opp_stream>>> (
+    copy_from<OPP_REAL> <<<nblocks, opp_const_threads_per_block>>> (
         opp_get_dev_raw_ptr(*(dat->thrust_real)),
         opp_get_dev_raw_ptr(*(dat->thrust_real_sort)),
         opp_get_dev_raw_ptr(new_idx_dv),
@@ -307,7 +307,7 @@ void particle_hole_fill_device(opp_set set)
 
     // Find the hole fill from indices (order may not be preserved)
     opp_profiler->start("HF_COPY_IF");
-    generate_hd_from_indices_kernel<<<nblocks, opp_const_threads_per_block, 0, *opp_stream>>>(
+    generate_hd_from_indices_kernel<<<nblocks, opp_const_threads_per_block>>>(
         tmp_swap_indices_dp, opp_get_dev_raw_ptr(hf_from_indices_dv), 
         (OPP_INT*)set->mesh_relation_dat->data_d, part_remove_count);
     OPP_DEVICE_SYNCHRONIZE();
@@ -335,7 +335,7 @@ void particle_hole_fill_device(opp_set set)
 
         if (strcmp(dat->type, "int") == 0) {
             
-            copy_from_to<OPP_INT> <<<nblocks, opp_const_threads_per_block, 0, *opp_stream>>> (
+            copy_from_to<OPP_INT> <<<nblocks, opp_const_threads_per_block>>> (
                 opp_get_dev_raw_ptr(*(dat->thrust_int)),
                 opp_get_dev_raw_ptr(*(dat->thrust_int)),
                 from_indices, to_indices,
@@ -345,7 +345,7 @@ void particle_hole_fill_device(opp_set set)
         }
         else if (strcmp(dat->type, "double") == 0) {
             
-            copy_from_to<OPP_REAL> <<<nblocks, opp_const_threads_per_block, 0, *opp_stream>>> (
+            copy_from_to<OPP_REAL> <<<nblocks, opp_const_threads_per_block>>> (
                 opp_get_dev_raw_ptr(*(dat->thrust_real)),
                 opp_get_dev_raw_ptr(*(dat->thrust_real)),
                 from_indices, to_indices,

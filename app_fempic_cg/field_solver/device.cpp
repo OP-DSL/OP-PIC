@@ -215,14 +215,14 @@ void FESolver::init_f1_and_J(const opp_dat ion_den_dat)
             });
     });    
 #else
-    init_f1_kernel <<<nodes_inc_haloNBlocks, OPP_gpu_threads_per_block, 0, *opp_stream>>> (
+    init_f1_kernel <<<nodes_inc_haloNBlocks, OPP_gpu_threads_per_block>>> (
         node_to_eq_map_d, 
         dLocal_d,
         ion_den_d, 
         tempNEQ1_d, 
         n_nodes_inc_halo, CONST_QE, CONST_EPS0, CONST_n0, CONST_phi0, CONST_kTe
     );
-    init_J_kernel <<<neqNBlocks, OPP_gpu_threads_per_block, 0, *opp_stream>>> (
+    init_J_kernel <<<neqNBlocks, OPP_gpu_threads_per_block>>> (
         tempNEQ2_d, 
         tempNEQ3_d, 
         dLocal_d, 
@@ -258,7 +258,7 @@ void FESolver::build_f1_vector()
                 });
         });
 #else
-        compute_f1_kernel <<<cells_inc_haloNBlocks, OPP_gpu_threads_per_block, 0, *opp_stream>>> (
+        compute_f1_kernel <<<cells_inc_haloNBlocks, OPP_gpu_threads_per_block>>> (
             c2n_map->map_d, 
             node_to_eq_map_d, 
             tempNEQ1_d, 
@@ -302,7 +302,7 @@ void FESolver::build_j_matrix()
                 });
         });
 #else
-        compute_J_kernel <<<cells_inc_haloNBlocks, OPP_gpu_threads_per_block, 0, *opp_stream>>> (
+        compute_J_kernel <<<cells_inc_haloNBlocks, OPP_gpu_threads_per_block>>> (
             c2n_map->map_d, 
             node_to_eq_map_d, 
             detJ_d, 
@@ -355,7 +355,7 @@ void FESolver::compute_node_potential(const opp_dat n_bnd_pot_dat, opp_dat node_
                 });
         });
 #else
-        compute_node_potential_kernel <<<nodesNBlocks, OPP_gpu_threads_per_block, 0, *opp_stream>>> (
+        compute_node_potential_kernel <<<nodesNBlocks, OPP_gpu_threads_per_block>>> (
             n_nodes_set, 
             node_to_eq_map_d, 
             dLocal_d,

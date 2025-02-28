@@ -182,7 +182,7 @@ void opp_par_loop_all__update_ghosts_kernel(opp_set set,
 
         if (!opp_use_segmented_reductions) // Do atomics ----------       
         {
-            opp_dev_update_ghosts_kernel<<<num_blocks, block_size, 0, *opp_stream>>>(
+            opp_dev_update_ghosts_kernel<<<num_blocks, block_size>>>(
                 (OPP_INT *)args[0].data_d,     // c_mask_ug
                 (OPP_REAL *)args[1].data_d,     // c_j
                 args[2].map_data_d,     // c2cug0_map
@@ -212,7 +212,7 @@ void opp_par_loop_all__update_ghosts_kernel(opp_set set,
         
             // Create key/value pairs
             opp_profiler->start("SR_CrKeyVal");
-            opp_dev_sr_update_ghosts_kernel<<<num_blocks, block_size, 0, *opp_stream>>>( 
+            opp_dev_sr_update_ghosts_kernel<<<num_blocks, block_size>>>( 
                 (OPP_INT *)args[0].data_d,     // c_mask_ug
                 opp_get_dev_raw_ptr<OPP_INT>(sr_dat1_keys_dv),     // sr keys for c_j
                 opp_get_dev_raw_ptr<OPP_REAL>(sr_dat1_values_dv),     // sr values for c_j

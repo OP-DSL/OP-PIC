@@ -34,7 +34,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "opp_increase_part_count.cu"
 #include "opp_cuda_utils.cu"
 
-cudaStream_t* opp_stream = nullptr;
+// cudaStream_t* opp_stream = nullptr;
 
 // arrays for global constants and reductions
 int OPP_consts_bytes = 0, OPP_reduct_bytes = 0;
@@ -244,8 +244,8 @@ void opp_device_init(int argc, char **argv)
         opp_abort("opp_cuda_init: Error: Test Device Failed");  
     }
 
-    opp_stream = new cudaStream_t();
-    cudaStreamCreate(opp_stream);
+    // opp_stream = new cudaStream_t();
+    // cudaStreamCreate(opp_stream);
 }
 
 //****************************************
@@ -304,7 +304,7 @@ void opp_device_exit()
         it->second.clear(); it->second.shrink_to_fit();
     }
 
-    cudaStreamDestroy(*opp_stream);
+    // cudaStreamDestroy(*opp_stream);
 }
 
 //****************************************

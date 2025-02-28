@@ -133,7 +133,7 @@ void opp_par_loop_all__advance_e_kernel(opp_set set,
         num_blocks = (end - start - 1) / block_size + 1;
 
         {
-            opp_dev_advance_e_kernel<<<num_blocks, block_size, 0, *opp_stream>>>(
+            opp_dev_advance_e_kernel<<<num_blocks, block_size>>>(
                 (OPP_REAL *)args[0].data_d,     // c_b
                 (OPP_REAL *)args[4].data_d,     // c_j
                 (OPP_REAL *)args[5].data_d,     // c_e

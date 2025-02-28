@@ -209,7 +209,7 @@ void opp_par_loop_all__deposit_charge_on_nodes_kernel(opp_set set,
         {
             const int array_count = opp_params->get<OPP_INT>("gpu_reduction_arrays");
             OPP_REAL** arg1_dat_thread_data_d = opp_create_thread_level_data<OPP_REAL>(args[1]);
-            opp_dev_deposit_charge_on_nodes_kernel<<<num_blocks, block_size, 0, *opp_stream>>>(
+            opp_dev_deposit_charge_on_nodes_kernel<<<num_blocks, block_size>>>(
                 (OPP_REAL *)args[0].data_d,     // p_lc
                 arg1_dat_thread_data_d, array_count,     // n_charge_den
                 (OPP_INT *)set->mesh_relation_dat->data_d,
@@ -246,7 +246,7 @@ void opp_par_loop_all__deposit_charge_on_nodes_kernel(opp_set set,
         
             // Create key/value pairs
             opp_profiler->start("SR_CrKeyVal");
-            opp_dev_sr_deposit_charge_on_nodes_kernel<<<num_blocks, block_size, 0, *opp_stream>>>( 
+            opp_dev_sr_deposit_charge_on_nodes_kernel<<<num_blocks, block_size>>>( 
                 (OPP_REAL *)args[0].data_d,     // p_lc
                 opp_get_dev_raw_ptr<OPP_INT>(sr_dat1_keys_dv),     // sr keys for n_charge_den
                 opp_get_dev_raw_ptr<OPP_REAL>(sr_dat1_values_dv),     // sr values for n_charge_den

@@ -33,10 +33,10 @@ inline void move_kernel(
             cell_det[i * 4 + 3] * point_pos[2]);
     }
 
-    if ((point_lc[0] > -1e-18) && ((point_lc[0] - 1.0) < -1e-18) &&
-        (point_lc[1] > -1e-18) && ((point_lc[1] - 1.0) < -1e-18) &&
-        (point_lc[2] > -1e-18) && ((point_lc[2] - 1.0) < -1e-18) &&
-        (point_lc[3] > -1e-18) && ((point_lc[3] - 1.0) < -1e-18)) {
+    if ((point_lc[0] > -1e-18) && ((point_lc[0] - 1.0) < 1e-18) &&
+        (point_lc[1] > -1e-18) && ((point_lc[1] - 1.0) < 1e-18) &&
+        (point_lc[2] > -1e-18) && ((point_lc[2] - 1.0) < 1e-18) &&
+        (point_lc[3] > -1e-18) && ((point_lc[3] - 1.0) < 1e-18)) {
 
         { opp_move_status_flag = OPP_MOVE_DONE; };
         return;
@@ -218,7 +218,7 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
         
         // check whether particles need to be moved via the global move routine
         num_blocks = (OPP_iter_end - OPP_iter_start - 1) / block_size + 1;
-        opp_dev_checkForGlobalMove3D_kernel<<<num_blocks, block_size, 0, *opp_stream>>>(
+        opp_dev_checkForGlobalMove3D_kernel<<<num_blocks, block_size>>>(
             (OPP_REAL*)args[0].data_d,    // p_pos 
             (OPP_INT *)args[4].data_d,    // p2c_map
             cellMapper->structMeshToCellMapping_d, 
@@ -262,7 +262,7 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
     opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k4_dat3_stride_d, &opp_k4_dat3_stride, &(args[3].dat->set->set_capacity), 1);
 
     opp_profiler->start("move_kernel_only");
-    opp_dev_move_kernel<<<num_blocks, block_size, 0, *opp_stream>>>(
+    opp_dev_move_kernel<<<num_blocks, block_size>>>(
         (OPP_REAL *)args[0].data_d,    // p_pos
         (OPP_REAL *)args[1].data_d,    // p_lc
         (OPP_REAL *)args[2].data_d,    // c_volume
@@ -312,7 +312,7 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
             opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k4_dat3_stride_d, &opp_k4_dat3_stride, &(args[3].dat->set->set_capacity), 1);
 
             opp_profiler->start("move_kernel_only");
-            opp_dev_move_kernel<<<num_blocks, block_size, 0, *opp_stream>>>(
+            opp_dev_move_kernel<<<num_blocks, block_size>>>(
                 (OPP_REAL *)args[0].data_d,    // p_pos
                 (OPP_REAL *)args[1].data_d,    // p_lc
                 (OPP_REAL *)args[2].data_d,    // c_volume
@@ -351,7 +351,7 @@ void opp_particle_move__move_kernel(opp_set set, opp_map c2c_map, opp_map p2c_ma
         opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k4_dat3_stride_d, &opp_k4_dat3_stride, &(args[3].dat->set->set_capacity), 1);
 
         opp_profiler->start("move_kernel_only");
-        opp_dev_move_kernel<<<num_blocks, block_size, 0, *opp_stream>>>(
+        opp_dev_move_kernel<<<num_blocks, block_size>>>(
             (OPP_REAL *)args[0].data_d,    // p_pos
             (OPP_REAL *)args[1].data_d,    // p_lc
             (OPP_REAL *)args[2].data_d,    // c_volume

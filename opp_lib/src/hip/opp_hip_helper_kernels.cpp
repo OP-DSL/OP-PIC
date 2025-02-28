@@ -62,12 +62,12 @@ void gather_data_to_buffer(opp_arg arg, halo_list exp_exec_list, halo_list exp_n
         const int set_size = arg.dat->set->size + arg.dat->set->exec_size +
                     arg.dat->set->nonexec_size;
 
-        export_halo_gather_soa<<<blocks, opp_const_threads_per_block, 0, *opp_stream>>>(
+        export_halo_gather_soa<<<blocks, opp_const_threads_per_block>>>(
             export_exec_list_d[arg.dat->set->index], arg.data_d,
             exp_exec_list->size, arg.dat->size, arg.dat->buffer_d, set_size,
             arg.dat->dim);
 
-        export_halo_gather_soa<<<blocks2, opp_const_threads_per_block, 0, *opp_stream>>>(
+        export_halo_gather_soa<<<blocks2, opp_const_threads_per_block>>>(
             export_nonexec_list_d[arg.dat->set->index], arg.data_d,
             exp_nonexec_list->size, arg.dat->size,
             arg.dat->buffer_d + exp_exec_list->size * arg.dat->size, set_size,
@@ -75,11 +75,11 @@ void gather_data_to_buffer(opp_arg arg, halo_list exp_exec_list, halo_list exp_n
 
     } 
     else {
-        export_halo_gather<<<blocks, opp_const_threads_per_block, 0, *opp_stream>>>(
+        export_halo_gather<<<blocks, opp_const_threads_per_block>>>(
             export_exec_list_d[arg.dat->set->index], arg.data_d,
             exp_exec_list->size, arg.dat->size, arg.dat->buffer_d);
 
-        export_halo_gather<<<blocks2, opp_const_threads_per_block, 0, *opp_stream>>>(
+        export_halo_gather<<<blocks2, opp_const_threads_per_block>>>(
             export_nonexec_list_d[arg.dat->set->index], arg.data_d,
             exp_nonexec_list->size, arg.dat->size,
             arg.dat->buffer_d + exp_exec_list->size * arg.dat->size);
@@ -124,14 +124,14 @@ void scatter_data_from_buffer(opp_arg arg)
         int offset = arg.dat->set->size;
         int copy_size = arg.dat->set->exec_size;
 
-        import_halo_scatter_soa<<<blocks, opp_const_threads_per_block, 0, *opp_stream>>>(
+        import_halo_scatter_soa<<<blocks, opp_const_threads_per_block>>>(
             offset, arg.data_d, copy_size, arg.dat->size, arg.dat->buffer_d_r,
             set_size, arg.dat->dim);
 
         offset += arg.dat->set->exec_size;
         copy_size = arg.dat->set->nonexec_size;
 
-        import_halo_scatter_soa<<<blocks2, opp_const_threads_per_block, 0, *opp_stream>>>(
+        import_halo_scatter_soa<<<blocks2, opp_const_threads_per_block>>>(
             offset, arg.data_d, copy_size, arg.dat->size,
             arg.dat->buffer_d_r + arg.dat->set->exec_size * arg.dat->size, set_size,
             arg.dat->dim);

@@ -95,7 +95,7 @@ void opp_par_loop_all__update_pos_kernel(opp_set set,
         num_blocks = (end - start - 1) / block_size + 1;
 
         {
-            opp_dev_update_pos_kernel<<<num_blocks, block_size, 0, *opp_stream>>>(
+            opp_dev_update_pos_kernel<<<num_blocks, block_size>>>(
                 (OPP_REAL *)args[0].data_d,     // p_vel
                 (OPP_REAL *)args[1].data_d,     // p_pos
                 (OPP_INT *)args[2].data_d,     // p_mdir

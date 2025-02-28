@@ -145,7 +145,7 @@ void opp_inc_part_count_with_distribution(opp_set set, OPP_INT insert_count,
                 const int nthread = OPP_gpu_threads_per_block;
                 const int nblocks = (end - start - 1) / nthread + 1;
 
-                opp_dev_assign_mesh_relation_kernel<<<nblocks, nthread, 0, *opp_stream>>>(
+                opp_dev_assign_mesh_relation_kernel<<<nblocks, nthread>>>(
                     (OPP_INT *) mesh_rel_dat->data_d,
                     (OPP_INT *) iface_dist->data_d,
                     start, 
@@ -168,7 +168,7 @@ void opp_inc_part_count_with_distribution(opp_set set, OPP_INT insert_count,
                     const int nthread = OPP_gpu_threads_per_block;
                     const int nblocks = (end - start - 1) / nthread + 1;
 
-                    opp_dev_assign_mesh_relation_kernel<<<nblocks, nthread, 0, *opp_stream>>>(
+                    opp_dev_assign_mesh_relation_kernel<<<nblocks, nthread>>>(
                         (OPP_INT *) mesh_rel_dat->data_d,
                         (OPP_INT *) iface_dist->data_d,
                         start, 

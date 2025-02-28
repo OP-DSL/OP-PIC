@@ -86,7 +86,7 @@ void opp_par_loop_all__init_boundary_pot_kernel(opp_set set,
         num_blocks = (end - start - 1) / block_size + 1;
 
         {
-            opp_dev_init_boundary_pot_kernel<<<num_blocks, block_size, 0, *opp_stream>>>(
+            opp_dev_init_boundary_pot_kernel<<<num_blocks, block_size>>>(
                 (OPP_INT *)args[0].data_d,     // n_type
                 (OPP_REAL *)args[1].data_d,     // n_bnd_pot
                 start,

@@ -428,7 +428,7 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
     opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_dat5_stride_d, &opp_k2_dat5_stride, &(args[5].dat->set->set_capacity), 1);
 
     opp_profiler->start("move_kernel_only");
-    opp_dev_move_deposit_kernel<<<num_blocks, block_size, 0, *opp_stream>>>(
+    opp_dev_move_deposit_kernel<<<num_blocks, block_size>>>(
         (OPP_REAL *)args[0].data_d,    // p_vel
         (OPP_REAL *)args[1].data_d,    // p_pos
         (OPP_REAL *)args[2].data_d,    // p_streak_mid
@@ -467,7 +467,7 @@ void opp_particle_move__move_deposit_kernel(opp_set set, opp_map c2c_map, opp_ma
         opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k2_dat5_stride_d, &opp_k2_dat5_stride, &(args[5].dat->set->set_capacity), 1);
 
         opp_profiler->start("move_kernel_only");
-        opp_dev_move_deposit_kernel<<<num_blocks, block_size, 0, *opp_stream>>>(
+        opp_dev_move_deposit_kernel<<<num_blocks, block_size>>>(
             (OPP_REAL *)args[0].data_d,    // p_vel
             (OPP_REAL *)args[1].data_d,    // p_pos
             (OPP_REAL *)args[2].data_d,    // p_streak_mid

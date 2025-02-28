@@ -33,8 +33,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "opp_particle_comm.cpp"
 #include "opp_increase_part_count.cpp"
 #include "opp_hip_utils.cpp"
+#include <sched.h>
+#include <unistd.h>
 
-hipStream_t* opp_stream = nullptr;
+// hipStream_t* opp_stream = nullptr;
 bool opp_use_segmented_reductions = false;
 
 // arrays for global constants and reductions
@@ -225,7 +227,23 @@ void opp_device_init(int argc, char **argv)
     if (deviceCount == 0) {
         opp_abort("opp_hip_init: Error: no devices supporting DEVICE");
     }
-  
+
+    if (OPP_DBG) {
+        int my_core_id = -1;
+        cpu_set_t core_set;
+        sched_getaffinity(0, sizeof(core_set), &core_set);
+        int rank;
+        std::string log = "";
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        for (int i = 0; i < 64; i++) {  // Adjust for your CPU count
+            if (CPU_ISSET(i, &core_set)) {
+                log += std::to_string(i) + " ";
+                my_core_id = i;
+            }
+        }
+        opp_printf("Main", "rank %d [%d]is bound to cores %s | my_core_id %d", rank, OPP_rank, log.c_str(), my_core_id);
+    }
+
 #ifdef USE_MPI
     opp::Comm comm(OPP_MPI_WORLD);
     const int int_rank = comm.rank_intra;
@@ -248,8 +266,8 @@ void opp_device_init(int argc, char **argv)
         opp_abort("opp_hip_init: Error: Test Device Failed");  
     }
 
-    opp_stream = new hipStream_t();
-    OPP_DEV_CHECK(hipStreamCreate(opp_stream));
+    // opp_stream = new hipStream_t();
+    // OPP_DEV_CHECK(hipStreamCreate(opp_stream));
 }
 
 //****************************************
@@ -301,7 +319,7 @@ void opp_device_exit()
         it->second.clear(); it->second.shrink_to_fit();
     }
 
-    OPP_DEV_CHECK(hipStreamDestroy(*opp_stream));
+    // OPP_DEV_CHECK(hipStreamDestroy(*opp_stream));
 }
 
 //****************************************

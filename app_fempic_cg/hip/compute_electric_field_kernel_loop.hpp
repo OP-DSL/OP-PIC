@@ -112,7 +112,7 @@ void opp_par_loop_all__compute_electric_field_kernel(opp_set set,
         num_blocks = (end - start - 1) / block_size + 1;
 
         {
-            opp_dev_compute_electric_field_kernel<<<num_blocks, block_size, 0, *opp_stream>>>(
+            opp_dev_compute_electric_field_kernel<<<num_blocks, block_size>>>(
                 (OPP_REAL *)args[0].data_d,     // c_ef
                 (OPP_REAL *)args[1].data_d,     // c_sd
                 (OPP_REAL *)args[2].data_d,     // n_potential

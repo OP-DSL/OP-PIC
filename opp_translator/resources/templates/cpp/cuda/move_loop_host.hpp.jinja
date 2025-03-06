@@ -371,7 +371,7 @@ opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k{{kernel_idx}}_map{{map.id}}_stride_d,
 
 opp_profiler->start("move_kernel_only");
 opp_dev_{{lh.kernel}}<<<num_blocks, block_size
-{{-(", %s" % shared_size) if lh.args|gbl|reduction|length > 0 else ", 0"}}, *opp_stream>>>(
+{{-(", %s" % shared_size) if lh.args|gbl|reduction|length > 0}}>>>(
     {% for dat in lh.dats %}
         {% if dat is indirect_reduction(lh) and lh is particle_loop %}
     arg{{dat.arg_id}}_dat_thread_data_d, array_count,    // {{dat.ptr}}
@@ -416,7 +416,7 @@ opp_profiler->end("move_kernel_only");
         
         // check whether particles need to be moved via the global move routine
         num_blocks = (OPP_iter_end - OPP_iter_start - 1) / block_size + 1;
-        opp_dev_checkForGlobalMove{{lh.dat(lh.args[0]).dim}}D_kernel<<<num_blocks, block_size, 0, *opp_stream>>>(
+        opp_dev_checkForGlobalMove{{lh.dat(lh.args[0]).dim}}D_kernel<<<num_blocks, block_size>>>(
             (OPP_REAL*)args[0].data_d,    // {{lh.dat(lh.args[0]).ptr}} 
             (OPP_INT *)args[{{lh.args|length}}].data_d,    // p2c_map
             cellMapper->structMeshToCellMapping_d, 

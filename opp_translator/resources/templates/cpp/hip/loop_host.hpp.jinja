@@ -488,7 +488,7 @@ void opp_par_loop_{{lh.iterator_type}}__{{lh.kernel}}(opp_set set,
 {% endblock %}
 
 {% macro atomic_kernel_call(shared_size) %}
-opp_dev_{{lh.kernel}}<<<num_blocks, block_size{{-(", %s" % shared_size) if lh.args|gbl|reduction|length > 0 else ", 0"}}, *opp_stream>>>(
+opp_dev_{{lh.kernel}}<<<num_blocks, block_size{{-(", %s" % shared_size) if lh.args|gbl|reduction|length > 0}}>>>(
     {% for dat in lh.dats %}
         {% if dat is indirect_reduction(lh) and lh is particle_loop %}
     arg{{dat.arg_id}}_dat_thread_data_d, array_count,     // {{dat.ptr}}
@@ -515,7 +515,7 @@ opp_dev_{{lh.kernel}}<<<num_blocks, block_size{{-(", %s" % shared_size) if lh.ar
 {%- endmacro %}
 
 {% macro seg_red_kernel_call(shared_size) %}
-opp_dev_sr_{{lh.kernel}}<<<num_blocks, block_size{{-(", %s" % shared_size) if lh.args|gbl|reduction|length > 0 else ", 0"}}, *opp_stream>>>( 
+opp_dev_sr_{{lh.kernel}}<<<num_blocks, block_size{{-(", %s" % shared_size) if lh.args|gbl|reduction|length > 0}}>>>( 
     {% for dat in lh.dats %}
         {% if dat is sr_both_direct_and_indirect_reduction(lh) %}
     opp_get_dev_raw_ptr<OPP_INT>(sr_dat{{dat.id}}_keys_dv),     // sr keys for {{dat.ptr}}

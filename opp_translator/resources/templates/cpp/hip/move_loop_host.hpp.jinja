@@ -477,7 +477,7 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_
 
 {% macro kernel_call(shared_size) %}
 opp_dev_{{lh.kernel}}<<<num_blocks, block_size
-{{-(", %s" % shared_size) if lh.args|gbl|reduction|length > 0 else ", 0"}}, *opp_stream>>>(
+{{-(", %s" % shared_size) if lh.args|gbl|reduction|length > 0}}>>>(
     {% for dat in lh.dats %}
         {% if dat is indirect_reduction(lh) and lh is particle_loop %}
     ({{dat.typ}}**)args[{{dat.arg_id}}].dat->thread_data_d, array_count,    // {{dat.ptr}}
@@ -505,7 +505,7 @@ opp_dev_{{lh.kernel}}<<<num_blocks, block_size
 {%- endmacro %}
 
 {% macro seg_red_kernel_call(shared_size) %}
-opp_dev_sr_{{lh.kernel}}<<<num_blocks, block_size{{-(", %s" % shared_size) if lh.args|gbl|reduction|length > 0 else ", 0"}}, *opp_stream>>>( 
+opp_dev_sr_{{lh.kernel}}<<<num_blocks, block_size{{-(", %s" % shared_size) if lh.args|gbl|reduction|length > 0}}>>>( 
     {% for dat in lh.dats %}
     ({{dat.typ}} *)args[{{dat.arg_id}}].data_d,     // {{dat.ptr}}
     {% endfor %}
@@ -551,7 +551,7 @@ opp_dev_sr_{{lh.kernel}}<<<num_blocks, block_size{{-(", %s" % shared_size) if lh
 
         // check whether particles need to be moved via the global move routine
         num_blocks = (OPP_iter_end - OPP_iter_start - 1) / block_size + 1;
-        opp_dev_checkForGlobalMove{{lh.dat(lh.args[0]).dim}}D_kernel<<<num_blocks, block_size, 0, *opp_stream>>>(
+        opp_dev_checkForGlobalMove{{lh.dat(lh.args[0]).dim}}D_kernel<<<num_blocks, block_size>>>(
             (OPP_REAL*)args[0].data_d,    // {{lh.dat(lh.args[0]).ptr}} 
             (OPP_INT *)args[{{lh.args|length}}].data_d,    // p2c_map
             cellMapper->structMeshToCellMapping_d, 

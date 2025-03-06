@@ -2,6 +2,7 @@
 # source /ext-home/zl/phd/OP-PIC/scripts/source_oneapi
 # -qopt-zmm-usage=high
 # scorep-mpiicpc  -qopt-report=2 -qopt-report-phase=vec -xHOST          --generate-line-info  -fsanitize=address -lasan
+#  -Xcompiler -ffp-contract=off --fmad=false -prec-div=true -prec-sqrt=true
 
 SRC = .
 INC = .
@@ -16,7 +17,7 @@ HIPCC      = $(HIP_COMPILER)
 SYCLCC     = icpx
 
 CPPFLAGS   = -std=c++17 -Wall -fPIC -march=native -DUSE_PETSC $(CPPFLAGS_ADD) 
-NVCCFLAGS  = -std=c++17 --extended-lambda -m64 -Xptxas -dlcm=ca -DUSE_PETSC $(NVCCFLAGS_ADD) -DUSE_THRUST 
+NVCCFLAGS  = -std=c++17 --extended-lambda -m64 -Xptxas -dlcm=ca -DUSE_PETSC $(NVCCFLAGS_ADD) -DUSE_THRUST
 HIPCCFLAGS = $(HIPCCFLAGS_ADD) -std=c++17 -isystem -D__HIP_PLATFORM_AMD__ -munsafe-fp-atomics -DUSE_THRUST -DUSE_PETSC -march=native
 SYCLFLAGS  = -w -fsycl -std=c++17 $(SYCLFLAGS_ADD) -DUSE_PETSC -DUSE_SYCL 
 
@@ -78,12 +79,6 @@ ifeq ($(PARMETIS), 1)
 	ALL_INC  += -I$(PARMETIS_INSTALL_PATH)/include -DHAVE_PARMETIS
 endif
 
-HDF5 ?= 0
-ifeq ($(HDF5), 1)
-	ALL_INC  += -I$(HDF5_INSTALL_PATH)/include 
-	ALL_LIBS += -Wl,-rpath,$(HDF5_INSTALL_PATH)/lib -L$(HDF5_INSTALL_PATH)/lib
-endif
-
 ALL_INC    += -I$(OPP_PATH)/include $(PETSC_INC)
 ALL_LIBS   += -L$(OPP_PATH)/lib $(PETSC_LIB) -lz
 
@@ -130,9 +125,9 @@ field_solver+omp_mpi:
 opp_kernels+omp_mpi: 
 		 $(MPICPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -DUSE_MPI -c omp/opp_kernels.cpp -o $(OBJ)/opp_kernels_omp_mpi.o $(ALL_INC)
 fempic_opp_hdf5+omp_mpi: 
-	     $(MPICPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -DUSE_MPI -c fempic_hdf5_opp.cpp -o $(OBJ)/fempic_hdf5_opp_omp_mpi.o $(ALL_INC)
+	     $(MPICPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -DUSE_MPI -c fempic_hdf5_opp.cpp -o $(OBJ)/fempic_hdf5_opp_omp_mpi.o $(ALL_INC) -I$(HDF5_INSTALL_PATH)/include 
 opp_mpi_hdf5+omp_mpi:
-		 $(MPICPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -DUSE_MPI -c $(OPP_PATH)/src/hdf5/opp_mpi_hdf5.cpp -o $(OBJ)/opp_mpi_hdf5_omp_mpi.o $(ALL_INC)
+		 $(MPICPP) $(CPPFLAGS) -fopenmp -DUSE_OMP -DUSE_MPI -c $(OPP_PATH)/src/hdf5/opp_mpi_hdf5.cpp -o $(OBJ)/opp_mpi_hdf5_omp_mpi.o $(ALL_INC) -I$(HDF5_INSTALL_PATH)/include 
 
 omp_mpi: mklib opp_kernels+omp_mpi field_solver+omp_mpi fempic_opp+omp_mpi
 		 $(MPICPP) $(CPPFLAGS) -fopenmp -o $(BIN)/omp_mpi \
@@ -147,7 +142,7 @@ omp_mpi_hdf5: mklib opp_kernels+omp_mpi field_solver+omp_mpi fempic_opp_hdf5+omp
 			$(OBJ)/opp_kernels_omp_mpi.o \
 			$(OBJ)/field_solver_cpu_omp_mpi.o \
 			$(OBJ)/opp_mpi_hdf5_omp_mpi.o \
-			$(ALL_LIBS) -lopp_omp_mpi_pet -lz -lhdf5
+			$(ALL_LIBS) -Wl,-rpath,$(HDF5_INSTALL_PATH)/lib -L$(HDF5_INSTALL_PATH)/lib -lopp_omp_mpi_pet -lz -lhdf5
 
 # ----------------------------------------------------------------------------------------------------------------------
 fempic_opp+mpi:
@@ -157,9 +152,9 @@ opp_kernels+mpi:
 field_solver+mpi:
 		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c field_solver/field_solver.cpp -o $(OBJ)/field_solver_cpu_mpi.o $(ALL_INC)
 fempic_hdf5_opp+mpi:
-		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c fempic_hdf5_opp.cpp -o $(OBJ)/fempic_hdf5_opp_mpi.o $(ALL_INC)
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c fempic_hdf5_opp.cpp -o $(OBJ)/fempic_hdf5_opp_mpi.o $(ALL_INC) -I$(HDF5_INSTALL_PATH)/include 
 opp_mpi_hdf5+mpi:
-		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c $(OPP_PATH)/src/hdf5/opp_mpi_hdf5.cpp -o $(OBJ)/opp_mpi_hdf5_mpi_hdf5.o $(ALL_INC)
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -c $(OPP_PATH)/src/hdf5/opp_mpi_hdf5.cpp -o $(OBJ)/opp_mpi_hdf5_mpi_hdf5.o $(ALL_INC) -I$(HDF5_INSTALL_PATH)/include 
 
 mpi: mklib fempic_opp+mpi opp_kernels+mpi field_solver+mpi
 	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/mpi \
@@ -174,7 +169,7 @@ mpi_hdf5: mklib fempic_hdf5_opp+mpi opp_kernels+mpi field_solver+mpi opp_mpi_hdf
 		 	$(OBJ)/opp_mpi_hdf5_mpi_hdf5.o  \
 		 	$(OBJ)/opp_kernels_mpi.o \
 		 	$(OBJ)/field_solver_cpu_mpi.o \
-		 	$(ALL_LIBS) -lopp_mpi_pet -lz -lhdf5 $(PARMETIS_LIB)
+		 	$(ALL_LIBS) -Wl,-rpath,$(HDF5_INSTALL_PATH)/lib -L$(HDF5_INSTALL_PATH)/lib -lopp_mpi_pet -lz -lhdf5 $(PARMETIS_LIB)
 
 # ----------------------------------------------------------------------------------------------------------------------
 opp_kernels+cuda:
@@ -199,9 +194,9 @@ fempic_opp+cuda_mpi:
 field_solver+cuda_mpi:
 		 $(NVCC) -x cu $(NVCCFLAGS) -DUSE_MPI -DUSE_CUDA -c field_solver/field_solver.cpp -o $(OBJ)/field_solver_cuda_mpi.o $(ALL_INC) $(CUDA_INC)
 fempic_hdf5_opp+cuda_mpi:
-		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -DUSE_CUDA -c fempic_hdf5_opp.cpp -o $(OBJ)/fempic_hdf5_opp_cuda_mpi.o $(ALL_INC)
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -DUSE_CUDA -c fempic_hdf5_opp.cpp -o $(OBJ)/fempic_hdf5_opp_cuda_mpi.o $(ALL_INC) -I$(HDF5_INSTALL_PATH)/include 
 opp_mpi_hdf5+cuda_mpi:
-		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -DUSE_CUDA -c $(OPP_PATH)/src/hdf5/opp_mpi_hdf5.cpp -o $(OBJ)/opp_mpi_hdf5_cuda_mpi_hdf5.o $(ALL_INC)
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -DUSE_CUDA -c $(OPP_PATH)/src/hdf5/opp_mpi_hdf5.cpp -o $(OBJ)/opp_mpi_hdf5_cuda_mpi_hdf5.o $(ALL_INC) -I$(HDF5_INSTALL_PATH)/include 
 
 cuda_mpi: mklib opp_kernels+cuda_mpi fempic_opp+cuda_mpi field_solver+cuda_mpi
 	     $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/cuda_mpi \
@@ -216,7 +211,7 @@ cuda_mpi_hdf5: mklib opp_kernels+cuda_mpi fempic_hdf5_opp+cuda_mpi field_solver+
 			$(OBJ)/fempic_hdf5_opp_cuda_mpi.o \
 			$(OBJ)/opp_mpi_hdf5_cuda_mpi_hdf5.o \
 			$(OBJ)/opp_kernels_cuda_mpi.o \
-			$(ALL_LIBS) $(CUDA_LIB) -lopp_cuda_mpi_pet -lz -lhdf5
+			$(ALL_LIBS) -Wl,-rpath,$(HDF5_INSTALL_PATH)/lib -L$(HDF5_INSTALL_PATH)/lib $(CUDA_LIB) -lopp_cuda_mpi_pet -lz -lhdf5
 
 # ----------------------------------------------------------------------------------------------------------------------
 fempic_opp+hip:
@@ -241,9 +236,9 @@ opp_kernels+hip_mpi:
 field_solver+hip_mpi:
 		 $(HIPCC) $(HIPCCFLAGS) -DUSE_MPI -DUSE_HIP -c field_solver/field_solver.cpp -o $(OBJ)/field_solver_hip_mpi.o $(ALL_INC) $(HIP_INC)
 fempic_hdf5_opp+hip_mpi:
-		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -DUSE_HIP -c fempic_hdf5_opp.cpp -o $(OBJ)/fempic_hdf5_opp_hip_mpi.o $(ALL_INC) $(HIP_INC)
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -DUSE_HIP -c fempic_hdf5_opp.cpp -o $(OBJ)/fempic_hdf5_opp_hip_mpi.o $(ALL_INC) $(HIP_INC) -I$(HDF5_INSTALL_PATH)/include 
 opp_mpi_hdf5+hip_mpi:
-		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -DUSE_HIP -c $(OPP_PATH)/src/hdf5/opp_mpi_hdf5.cpp -o $(OBJ)/opp_mpi_hdf5_hip_mpi_hdf5.o $(ALL_INC) $(HIP_INC)
+		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -DUSE_HIP -c $(OPP_PATH)/src/hdf5/opp_mpi_hdf5.cpp -o $(OBJ)/opp_mpi_hdf5_hip_mpi_hdf5.o $(ALL_INC) $(HIP_INC) -I$(HDF5_INSTALL_PATH)/include 
 
 hip_mpi: mklib fempic_opp+hip_mpi opp_kernels+hip_mpi field_solver+hip_mpi
 		 $(MPICPP) $(CPPFLAGS) -DUSE_MPI -o $(BIN)/hip_mpi \
@@ -258,7 +253,7 @@ hip_mpi_hdf5: mklib fempic_hdf5_opp+hip_mpi opp_kernels+hip_mpi field_solver+hip
 			$(OBJ)/opp_kernels_hip_mpi.o \
 			$(OBJ)/opp_mpi_hdf5_hip_mpi_hdf5.o \
 			$(OBJ)/field_solver_hip_mpi.o \
-			$(ALL_LIBS) $(HIP_LIB) -lopp_hip_mpi_pet -lz -lhdf5
+			$(ALL_LIBS) -Wl,-rpath,$(HDF5_INSTALL_PATH)/lib -L$(HDF5_INSTALL_PATH)/lib $(HIP_LIB) -lopp_hip_mpi_pet -lz -lhdf5
 
 # ----------------------------------------------------------------------------------------------------------------------
 fempic_opp+sycl:
@@ -283,9 +278,9 @@ opp_kernels+sycl_mpi:
 field_solver+sycl_mpi:
 		 $(MPICPP) $(SYCLFLAGS) -DUSE_MPI -c field_solver/field_solver.cpp -o $(OBJ)/field_solver_sycl_mpi.o $(ALL_INC) 
 fempic_hdf5_opp+sycl_mpi:
-		 $(MPICPP) $(SYCLFLAGS) -DUSE_MPI -c fempic_hdf5_opp.cpp -o $(OBJ)/fempic_hdf5_opp_sycl_mpi.o $(ALL_INC)
+		 $(MPICPP) $(SYCLFLAGS) -DUSE_MPI -c fempic_hdf5_opp.cpp -o $(OBJ)/fempic_hdf5_opp_sycl_mpi.o $(ALL_INC) -I$(HDF5_INSTALL_PATH)/include 
 opp_mpi_hdf5+sycl_mpi:
-		 $(MPICPP) $(SYCLFLAGS) -DUSE_MPI -c $(OPP_PATH)/src/hdf5/opp_mpi_hdf5.cpp -o $(OBJ)/opp_mpi_hdf5_sycl_mpi_hdf5.o $(ALL_INC)
+		 $(MPICPP) $(SYCLFLAGS) -DUSE_MPI -c $(OPP_PATH)/src/hdf5/opp_mpi_hdf5.cpp -o $(OBJ)/opp_mpi_hdf5_sycl_mpi_hdf5.o $(ALL_INC) -I$(HDF5_INSTALL_PATH)/include 
 
 sycl_mpi: mklib fempic_opp+sycl_mpi opp_kernels+sycl_mpi field_solver+sycl_mpi
 		 $(MPICPP) $(SYCLFLAGS) -DUSE_MPI -o $(BIN)/sycl_mpi \
@@ -300,7 +295,7 @@ sycl_mpi_hdf5: mklib fempic_hdf5_opp+sycl_mpi opp_kernels+sycl_mpi field_solver+
 			$(OBJ)/opp_kernels_sycl_mpi.o \
 			$(OBJ)/opp_mpi_hdf5_sycl_mpi_hdf5.o \
 			$(OBJ)/field_solver_sycl_mpi.o \
-			$(ALL_LIBS) $(SYCL_LIB) -lopp_sycl_mpi_pet -lz -lhdf5
+			$(ALL_LIBS) -Wl,-rpath,$(HDF5_INSTALL_PATH)/lib -L$(HDF5_INSTALL_PATH)/lib $(SYCL_LIB) -lopp_sycl_mpi_pet -lz -lhdf5
 
 # ----------------------------------------------------------------------------------------------------------------------
 mpi_hdf5_conv: mklib

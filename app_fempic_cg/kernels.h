@@ -42,7 +42,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define KERNEL_DET_FIELDS       4
 #define KERNEL_NEIGHB_C         4
 #define KERNEL_DIM              3
-#define KERNEL_TOLERENCE        1e-18
+#define KERNEL_TOLERENCE        1e-10
 
 //*************************************************************************************************
 inline void init_boundary_pot_kernel(

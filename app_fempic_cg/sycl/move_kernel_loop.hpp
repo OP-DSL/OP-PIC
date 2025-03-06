@@ -33,10 +33,10 @@ inline void move_kernel(
             cell_det[i * 4 + 3] * point_pos[2]);
     }
 
-    if ((point_lc[0] > -1e-18) && ((point_lc[0] - 1.0) < -1e-18) &&
-        (point_lc[1] > -1e-18) && ((point_lc[1] - 1.0) < -1e-18) &&
-        (point_lc[2] > -1e-18) && ((point_lc[2] - 1.0) < -1e-18) &&
-        (point_lc[3] > -1e-18) && ((point_lc[3] - 1.0) < -1e-18)) {
+    if ((point_lc[0] > (-1) * 1e-10) && ((point_lc[0] - 1.0) < 1e-10) &&
+        (point_lc[1] > (-1) * 1e-10) && ((point_lc[1] - 1.0) < 1e-10) &&
+        (point_lc[2] > (-1) * 1e-10) && ((point_lc[2] - 1.0) < 1e-10) &&
+        (point_lc[3] > (-1) * 1e-10) && ((point_lc[3] - 1.0) < 1e-10)) {
 
         { opp_move_status_flag = OPP_MOVE_DONE; };
         return;
@@ -131,10 +131,10 @@ void opp_dev_move_kernel_sycl(opp_set set, const int nargs, opp_arg *args, opp_m
                     cell_det[(i * 4 + 3) * opp_k4_dat3_stride_sycl[0]] * point_pos[(2) * opp_k4_dat0_stride_sycl[0]]);
             }
 
-            if ((point_lc[(0) * opp_k4_dat1_stride_sycl[0]] > -1e-18) && ((point_lc[(0) * opp_k4_dat1_stride_sycl[0]] - 1.0) < -1e-18) &&
-                (point_lc[(1) * opp_k4_dat1_stride_sycl[0]] > -1e-18) && ((point_lc[(1) * opp_k4_dat1_stride_sycl[0]] - 1.0) < -1e-18) &&
-                (point_lc[(2) * opp_k4_dat1_stride_sycl[0]] > -1e-18) && ((point_lc[(2) * opp_k4_dat1_stride_sycl[0]] - 1.0) < -1e-18) &&
-                (point_lc[(3) * opp_k4_dat1_stride_sycl[0]] > -1e-18) && ((point_lc[(3) * opp_k4_dat1_stride_sycl[0]] - 1.0) < -1e-18)) {
+            if ((point_lc[(0) * opp_k4_dat1_stride_sycl[0]] > (-1) * 1e-10) && ((point_lc[(0) * opp_k4_dat1_stride_sycl[0]] - 1.0) < 1e-10) &&
+                (point_lc[(1) * opp_k4_dat1_stride_sycl[0]] > (-1) * 1e-10) && ((point_lc[(1) * opp_k4_dat1_stride_sycl[0]] - 1.0) < 1e-10) &&
+                (point_lc[(2) * opp_k4_dat1_stride_sycl[0]] > (-1) * 1e-10) && ((point_lc[(2) * opp_k4_dat1_stride_sycl[0]] - 1.0) < 1e-10) &&
+                (point_lc[(3) * opp_k4_dat1_stride_sycl[0]] > (-1) * 1e-10) && ((point_lc[(3) * opp_k4_dat1_stride_sycl[0]] - 1.0) < 1e-10)) {
 
                 { opp_move_status_flag = OPP_MOVE_DONE; };
                 return;

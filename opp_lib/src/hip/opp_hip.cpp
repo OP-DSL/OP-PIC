@@ -228,6 +228,7 @@ void opp_device_init(int argc, char **argv)
         opp_abort("opp_hip_init: Error: no devices supporting DEVICE");
     }
 
+#ifdef USE_MPI
     if (OPP_DBG) {
         int my_core_id = -1;
         cpu_set_t core_set;
@@ -244,7 +245,6 @@ void opp_device_init(int argc, char **argv)
         opp_printf("Main", "rank %d [%d]is bound to cores %s | my_core_id %d", rank, OPP_rank, log.c_str(), my_core_id);
     }
 
-#ifdef USE_MPI
     opp::Comm comm(OPP_MPI_WORLD);
     const int int_rank = comm.rank_intra;
 #else

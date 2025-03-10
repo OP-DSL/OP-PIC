@@ -4,11 +4,6 @@
 //*********************************************
 
 namespace opp_k2 {
-enum Dim {
-    x = 0,
-    y = 1,
-};
-
 enum CellMap {
     xd_y = 0,
     xu_y,
@@ -16,10 +11,35 @@ enum CellMap {
     x_yu
 };
 
+enum Dim {
+    x = 0,
+    y = 1,
+};
+
 inline void move_kernel(const double* p_pos, int* p_mdir, const double* c_pos_ll)
 {
-    // check for x direction movement
     const double p_pos_x_diff = (p_pos[Dim::x] - c_pos_ll[Dim::x]);
+    const double p_pos_y_diff = (p_pos[Dim::y] - c_pos_ll[Dim::y]);
+
+    if ((opp_move_hop_iter_one_flag))
+    {
+        if (((p_pos_x_diff > CONST_cell_width[0]) && (CONST_extents[Dim::x] > 2 * p_pos_x_diff - CONST_cell_width[0])) ||
+            ((p_pos_x_diff < 0) && (CONST_extents[Dim::x] < CONST_cell_width[0] - 2 * p_pos_x_diff))) {
+            p_mdir[Dim::x] = 1;
+        }
+        else {
+            p_mdir[Dim::x] = -1;
+        }
+        if (((p_pos_y_diff > CONST_cell_width[0]) && (CONST_extents[Dim::y] > 2 * p_pos_y_diff - CONST_cell_width[0])) ||
+            ((p_pos_y_diff < 0) && (CONST_extents[Dim::y] < CONST_cell_width[0] - 2 * p_pos_y_diff))) {
+            p_mdir[Dim::y] = 1;
+        }
+        else {
+            p_mdir[Dim::y] = -1;
+        }
+    }
+
+    // check for x direction movement
     if ((p_pos_x_diff >= 0.0) && (p_pos_x_diff <= CONST_cell_width[0])) {
         p_mdir[Dim::x] = 0; // within cell in x direction
     }
@@ -33,7 +53,6 @@ inline void move_kernel(const double* p_pos, int* p_mdir, const double* c_pos_ll
     }
 
     // check for y direction movement
-    const double p_pos_y_diff = (p_pos[Dim::y] - c_pos_ll[Dim::y]);
     if ((p_pos_y_diff >= 0.0) && (p_pos_y_diff <= CONST_cell_width[0])) {
         p_mdir[Dim::y] = 0; // within cell in y direction
     }

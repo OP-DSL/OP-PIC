@@ -208,7 +208,7 @@ void init_particles(opp_dat p_id, opp_dat p_pos, opp_dat p_vel, opp_dat p_mdir, 
         opp_get_data<OPP_INT>(p_mdir)[px * DIM + Dim::y] = 1;
 
         opp_get_data(p_cid)[px]       = cells.at(px);
-        opp_get_data<OPP_INT>(p_id)[px] = px; //((int*)gcid->data)[cells.at(px)]; 
+        opp_get_data<OPP_INT>(p_id)[px] = OPP_rank * 1000000 + px; //((int*)gcid->data)[cells.at(px)]; 
     }
     opp_profiler->end("Init_assign");
 

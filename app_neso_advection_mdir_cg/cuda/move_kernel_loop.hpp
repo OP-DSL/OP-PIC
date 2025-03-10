@@ -30,8 +30,28 @@ enum Dim {
 
 inline void move_kernel(const double* p_pos, int* p_mdir, const double* c_pos_ll)
 {
-    // check for x direction movement
     const double p_pos_x_diff = (p_pos[Dim::x] - c_pos_ll[Dim::x]);
+    const double p_pos_y_diff = (p_pos[Dim::y] - c_pos_ll[Dim::y]);
+
+    if ((opp_move_hop_iter_one_flag))
+    {
+        if (((p_pos_x_diff > CONST_cell_width[0]) && (CONST_extents[Dim::x] > 2 * p_pos_x_diff - CONST_cell_width[0])) ||
+            ((p_pos_x_diff < 0) && (CONST_extents[Dim::x] < CONST_cell_width[0] - 2 * p_pos_x_diff))) {
+            p_mdir[Dim::x] = 1;
+        }
+        else {
+            p_mdir[Dim::x] = -1;
+        }
+        if (((p_pos_y_diff > CONST_cell_width[0]) && (CONST_extents[Dim::y] > 2 * p_pos_y_diff - CONST_cell_width[0])) ||
+            ((p_pos_y_diff < 0) && (CONST_extents[Dim::y] < CONST_cell_width[0] - 2 * p_pos_y_diff))) {
+            p_mdir[Dim::y] = 1;
+        }
+        else {
+            p_mdir[Dim::y] = -1;
+        }
+    }
+
+    // check for x direction movement
     if ((p_pos_x_diff >= 0.0) && (p_pos_x_diff <= CONST_cell_width[0])) {
         p_mdir[Dim::x] = 0; // within cell in x direction
     }
@@ -45,7 +65,6 @@ inline void move_kernel(const double* p_pos, int* p_mdir, const double* c_pos_ll
     }
 
     // check for y direction movement
-    const double p_pos_y_diff = (p_pos[Dim::y] - c_pos_ll[Dim::y]);
     if ((p_pos_y_diff >= 0.0) && (p_pos_y_diff <= CONST_cell_width[0])) {
         p_mdir[Dim::y] = 0; // within cell in y direction
     }
@@ -78,8 +97,28 @@ __device__ inline void move_kernel(char& opp_move_status_flag, const bool opp_mo
     const OPP_INT* opp_c2c, OPP_INT* opp_p2c, // Added by code-gen
     const double* p_pos, int* p_mdir, const double* c_pos_ll)
 {
-    // check for x direction movement
     const double p_pos_x_diff = (p_pos[(Dim::x) * opp_k2_dat0_stride_d] - c_pos_ll[(Dim::x) * opp_k2_dat2_stride_d]);
+    const double p_pos_y_diff = (p_pos[(Dim::y) * opp_k2_dat0_stride_d] - c_pos_ll[(Dim::y) * opp_k2_dat2_stride_d]);
+
+    if ((opp_move_hop_iter_one_flag))
+    {
+        if (((p_pos_x_diff > CONST_cell_width_d[0]) && (CONST_extents_d[Dim::x] > 2 * p_pos_x_diff - CONST_cell_width_d[0])) ||
+            ((p_pos_x_diff < 0) && (CONST_extents_d[Dim::x] < CONST_cell_width_d[0] - 2 * p_pos_x_diff))) {
+            p_mdir[(Dim::x) * opp_k2_dat1_stride_d] = 1;
+        }
+        else {
+            p_mdir[(Dim::x) * opp_k2_dat1_stride_d] = -1;
+        }
+        if (((p_pos_y_diff > CONST_cell_width_d[0]) && (CONST_extents_d[Dim::y] > 2 * p_pos_y_diff - CONST_cell_width_d[0])) ||
+            ((p_pos_y_diff < 0) && (CONST_extents_d[Dim::y] < CONST_cell_width_d[0] - 2 * p_pos_y_diff))) {
+            p_mdir[(Dim::y) * opp_k2_dat1_stride_d] = 1;
+        }
+        else {
+            p_mdir[(Dim::y) * opp_k2_dat1_stride_d] = -1;
+        }
+    }
+
+    // check for x direction movement
     if ((p_pos_x_diff >= 0.0) && (p_pos_x_diff <= CONST_cell_width_d[0])) {
         p_mdir[(Dim::x) * opp_k2_dat1_stride_d] = 0; // within cell in x direction
     }
@@ -93,7 +132,6 @@ __device__ inline void move_kernel(char& opp_move_status_flag, const bool opp_mo
     }
 
     // check for y direction movement
-    const double p_pos_y_diff = (p_pos[(Dim::y) * opp_k2_dat0_stride_d] - c_pos_ll[(Dim::y) * opp_k2_dat2_stride_d]);
     if ((p_pos_y_diff >= 0.0) && (p_pos_y_diff <= CONST_cell_width_d[0])) {
         p_mdir[(Dim::y) * opp_k2_dat1_stride_d] = 0; // within cell in y direction
     }

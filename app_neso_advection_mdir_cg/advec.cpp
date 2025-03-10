@@ -106,8 +106,7 @@ int main(int argc, char **argv)
         {
             opp_par_loop(update_pos_kernel, "update_pos", part_set, OPP_ITERATE_ALL,
                 opp_arg_dat(p_vel,  OPP_READ),
-                opp_arg_dat(p_pos,  OPP_RW),
-                opp_arg_dat(p_mdir, OPP_WRITE)
+                opp_arg_dat(p_pos,  OPP_RW)
             );
 
             opp_particle_move(move_kernel, "move", part_set, c2c_map, p2c_map,

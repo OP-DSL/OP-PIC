@@ -17,7 +17,7 @@ INT opp_gpu_direct = 0
 BOOL opp_global_move = false
 REAL grid_spacing    = 0.5
 BOOL opp_dh_data_generate = false
-STRING opp_dh_mesh_folder  = /home/zl/phd/box_mesh_gen/neso_advection/dh_mesh_scaling/
+STRING opp_dh_mesh_folder  = /home/zl/phd/box_mesh_gen/dh_meshes/advection/dh_1024/
 # Use opp_dh_data_generate = true and OPP_DH_DATA_DUMP=1 in args to dump the structured mesh
 
 BOOL opp_segmented_red = false

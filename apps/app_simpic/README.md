@@ -35,8 +35,9 @@ In addition, the mesh/particles should be distributed, an appropriate partitioni
 
 ## Code Generation
 Code generation can be done by invoking the below command.
-
-`python3 $OPP_TRANSLATOR -v -I$OPP_PATH/include/ --file_paths simpic.cpp`
+```bash
+python3 $OPP_TRANSLATOR -v -I$OPP_PATH/include/ --file_paths simpic.cpp
+```
 
 Once the code-generator is invoked, a `simpic_opp.cpp` file and `seq`, `omp`, `mpi`, `cuda` and `hip` folders, including `opp_kernels.<cpp|cu>` and a loop kernel header file per unique `opp_par_loop` or `opp_particle_move` loop will get generated.
 
@@ -51,7 +52,7 @@ Once the platform specific target files are generated, use the provided `MakeFil
  * ~~`make hip_mpi`~~
 
 ## Configuration
-An example configuration file is provided in `OP-PIC/app_simpic/configs` folder.
+An example configuration file is provided in `configs` folder.
 
 This file can be used to change the application configurations such as number of steps in the main iterating loop (`num_steps`), number of cells per process (`ncpp`), number of particles per process (`ppc`) and other parameters included in the original SimPIC application. 
 

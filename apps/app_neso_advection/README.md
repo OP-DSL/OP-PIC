@@ -1,5 +1,10 @@
 # OP-PIC NESO-Advection
 
+**Please follow the instructions provided in the main readme file first.**
+
+**This README file contains only additional information regarding the application.**
+
+##
 **This folder contain fully user written code, ready for code generation.**
 
 ##
@@ -23,39 +28,48 @@ They are, `cell to cell map` and `particle to cell map`.
 
 ## Code Generation
 Code generation can be done by invoking the below command.
-
-`python3 $OPP_TRANSLATOR -v -I$OPP_PATH/include/ --file_paths advec.cpp`
+```bash
+python3 $OPP_TRANSLATOR -I$OPP_PATH/include/ --file_paths advec.cpp
+```
 
 Once the code-generator is invoked, a `advec_opp.cpp` file and `seq`, `omp`, `mpi`, `cuda`, `hip` and `sycl` folders, including `opp_kernels.<cpp|cu>` and a loop kernel header file per unique `opp_par_loop` or `opp_particle_move` loop will get generated.
 
 ## Compile
 Once the platform specific target files are generated, use the provided `MakeFile` to compile the application.
- * `make seq`
- * `make mpi`
- * `make omp`
- * `make omp_mpi`
- * `make cuda`
- * `make cuda_mpi`
- * `make hip`
- * `make hip_mpi`
- * `make sycl`
- * `make sycl_mpi`
+```bash
+ make seq
+ make mpi
+ make omp
+ make omp_mpi
+ make cuda
+ make cuda_mpi
+ make hip
+ make hip_mpi
+ make sycl
+ make sycl_mpi
+```
 
 ### Configuration
-An example configuration file is provided in `OP-PIC/app_neso_advection/configs` folder.
+An example configuration file is provided in `configs` folder.
 
 This file can be used to change the application configurations such as number of steps in the main iterating loop (`num_steps`), domain mesh size (`nx, ny`) and other parameters included in the original neso_advection application. 
 
 In addition, the config file include OP-PIC DSL simulation parameters, such as gpu threads per block (`opp_threads_per_block`), particle move finalizing mechanism (`opp_fill`=[`HoleFill_All`, `Sort_All`, `Shuffle_All`, `Sort_Periodic`, `Shuffle_Periodic`]).
 
+Generated direct-hop overlay meshes can be found in [OP-PIC-Meshes](https://github.com/ZamanLantra/OP-PIC_meshes)
+
 # Run
 To run the application, below commands can be used.
- * `bin/seq configs/coarse.param`
- * `bin/omp configs/coarse.param`
- * `bin/cuda configs/coarse.param`
- * `bin/hip configs/coarse.param`
- * `mpirun -np <num_ranks> bin/mpi configs/coarse.param`
- * `mpirun -np <num_ranks> bin/cuda_mpi configs/coarse.param`
- * `mpirun -np <num_ranks> bin/hip_mpi configs/coarse.param`
+```bash
+    bin/seq configs/advec.param
+    bin/omp configs/advec.param
+    bin/cuda configs/advec.param
+    bin/hip configs/advec.param
+    bin/sycl configs/advec.param
+    mpirun -np <num_ranks> bin/mpi configs/advec.param
+    mpirun -np <num_ranks> bin/cuda_mpi configs/advec.param
+    mpirun -np <num_ranks> bin/hip_mpi configs/advec.param
+    mpirun -np <num_ranks> bin/sycl_mpi configs/advec.param
+```
 
 In addition, `srun` can be used for execution.

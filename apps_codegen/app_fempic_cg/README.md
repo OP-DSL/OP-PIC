@@ -1,9 +1,5 @@
 # OP-PIC FemPIC (Already code generated for reference)
 
-**Please follow the instructions provided in the main readme file first.**
-
-**This README file contains only additional information regarding the application.**
-
 ##
 **This folder contain both user written code and OP-PIC code generated code.**
 

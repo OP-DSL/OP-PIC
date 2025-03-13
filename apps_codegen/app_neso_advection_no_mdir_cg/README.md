@@ -1,5 +1,9 @@
 # OP-PIC NESO-Advection (Already code generated for reference)
 
+#
+**The Move elemental kernel in this implementation does not take the move direction into account. Therefore, this approach does not provide the best solution when particles move across the periodic boundaries.**
+#
+
 **Please follow the instructions provided in the main readme file first.**
 
 **This README file contains only additional information regarding the application.**

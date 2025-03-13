@@ -6,7 +6,7 @@
 NESO Advection is a simple 2D demonstrator unstructured mesh advection benchmark code that can be used as a particle mover of a PIC application (https://github.com/will-saunders-ukaea/hybrid_move_benchmark/).
 
 It is based on quadrilateral mesh cells and particles are periodically move through the mesh by updating its position using with `s=ut`, without any field influence. 
-Overall NESO_Advection has 2 DOFs per particle.
+Overall NESO_Advection has 3 DOFs per particle.
 
 Here, we have implemented the application with OP-PIC, solving the same physics as the original.
 

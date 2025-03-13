@@ -30,52 +30,58 @@ enum Dim {
 
 inline void move_kernel(const double* p_pos, int* p_mdir, const double* c_pos_ll)
 {
+    // Step (1) : Specifying computations to be carried out for each mesh element, until its final destination cell
     const double p_pos_x_diff = (p_pos[Dim::x] - c_pos_ll[Dim::x]);
     const double p_pos_y_diff = (p_pos[Dim::y] - c_pos_ll[Dim::y]);
+    // Step (1) : end
 
+    // Step X : Execute code only once at the starting cell
     if ((opp_move_hop_iter_one_flag))
     {
-        if (((p_pos_x_diff > CONST_cell_width[0]) && (CONST_extents[Dim::x] > 2 * p_pos_x_diff - CONST_cell_width[0])) ||
-            ((p_pos_x_diff < 0) && (CONST_extents[Dim::x] < CONST_cell_width[0] - 2 * p_pos_x_diff))) {
-            p_mdir[Dim::x] = 1;
-        }
-        else {
-            p_mdir[Dim::x] = -1;
-        }
-        if (((p_pos_y_diff > CONST_cell_width[0]) && (CONST_extents[Dim::y] > 2 * p_pos_y_diff - CONST_cell_width[0])) ||
-            ((p_pos_y_diff < 0) && (CONST_extents[Dim::y] < CONST_cell_width[0] - 2 * p_pos_y_diff))) {
-            p_mdir[Dim::y] = 1;
-        }
-        else {
-            p_mdir[Dim::y] = -1;
-        }
-    }
+        // Find whether the final position is towards positive or negative direction
+        const bool is_x_positive = (((p_pos_x_diff > CONST_cell_width[0]) &&
+                                    (CONST_extents[Dim::x] > 2 * p_pos_x_diff - CONST_cell_width[0])) ||
+                                    ((p_pos_x_diff < 0) && (CONST_extents[Dim::x] < CONST_cell_width[0] - 2 * p_pos_x_diff)));
 
+        const bool is_y_positive = (((p_pos_y_diff > CONST_cell_width[0]) &&
+                                    (CONST_extents[Dim::y] > 2 * p_pos_y_diff - CONST_cell_width[0])) ||
+                                    ((p_pos_y_diff < 0) && (CONST_extents[Dim::y] < CONST_cell_width[0] - 2 * p_pos_y_diff)));
+
+        p_mdir[Dim::x] = is_x_positive ? 1 : -1;
+        p_mdir[Dim::y] = is_y_positive ? 1 : -1;
+    }
+    // Step X : end
+
+    // Step (2) : A method to identify if the particle has reached its final mesh cell
     // check for x direction movement
     if ((p_pos_x_diff >= 0.0) && (p_pos_x_diff <= CONST_cell_width[0])) {
         p_mdir[Dim::x] = 0; // within cell in x direction
     }
     else if (p_mdir[Dim::x] > 0) {
-        opp_p2c[0] = opp_c2c[CellMap::xu_y];
+        opp_p2c[0] = opp_c2c[CellMap::xu_y]; // Step (5) : Calculate the next most probable cell index to search
         { opp_move_status_flag = OPP_NEED_MOVE; }; return;
     }
     else if (p_mdir[Dim::x] < 0) {
-        opp_p2c[0] = opp_c2c[CellMap::xd_y];
+        opp_p2c[0] = opp_c2c[CellMap::xd_y]; // Step (5) : Calculate the next most probable cell index to search
         { opp_move_status_flag = OPP_NEED_MOVE; }; return;
     }
 
+    // Step (2) : A method to identify if the particle has reached its final mesh cell
     // check for y direction movement
     if ((p_pos_y_diff >= 0.0) && (p_pos_y_diff <= CONST_cell_width[0])) {
         p_mdir[Dim::y] = 0; // within cell in y direction
     }
     else if (p_mdir[Dim::y] > 0) {
-        opp_p2c[0] = opp_c2c[CellMap::x_yu];
+        opp_p2c[0] = opp_c2c[CellMap::x_yu]; // Step (5) : Calculate the next most probable cell index to search
         { opp_move_status_flag = OPP_NEED_MOVE; }; return;
     }
     else if (p_mdir[Dim::y] < 0) {
-        opp_p2c[0] = opp_c2c[CellMap::x_yd];
+        opp_p2c[0] = opp_c2c[CellMap::x_yd]; // Step (5) : Calculate the next most probable cell index to search
         { opp_move_status_flag = OPP_NEED_MOVE; }; return;
     }
+
+    // Step X : Any calculations required on all hopped cells
+    /* No computations in NESO-Advection */
 
     { opp_move_status_flag = OPP_MOVE_DONE; };
 }
@@ -97,52 +103,58 @@ __device__ inline void move_kernel(char& opp_move_status_flag, const bool opp_mo
     const OPP_INT* opp_c2c, OPP_INT* opp_p2c, // Added by code-gen
     const double* p_pos, int* p_mdir, const double* c_pos_ll)
 {
+    // Step (1) : Specifying computations to be carried out for each mesh element, until its final destination cell
     const double p_pos_x_diff = (p_pos[(Dim::x) * opp_k2_dat0_stride_d] - c_pos_ll[(Dim::x) * opp_k2_dat2_stride_d]);
     const double p_pos_y_diff = (p_pos[(Dim::y) * opp_k2_dat0_stride_d] - c_pos_ll[(Dim::y) * opp_k2_dat2_stride_d]);
+    // Step (1) : end
 
+    // Step X : Execute code only once at the starting cell
     if ((opp_move_hop_iter_one_flag))
     {
-        if (((p_pos_x_diff > CONST_cell_width_d[0]) && (CONST_extents_d[Dim::x] > 2 * p_pos_x_diff - CONST_cell_width_d[0])) ||
-            ((p_pos_x_diff < 0) && (CONST_extents_d[Dim::x] < CONST_cell_width_d[0] - 2 * p_pos_x_diff))) {
-            p_mdir[(Dim::x) * opp_k2_dat1_stride_d] = 1;
-        }
-        else {
-            p_mdir[(Dim::x) * opp_k2_dat1_stride_d] = -1;
-        }
-        if (((p_pos_y_diff > CONST_cell_width_d[0]) && (CONST_extents_d[Dim::y] > 2 * p_pos_y_diff - CONST_cell_width_d[0])) ||
-            ((p_pos_y_diff < 0) && (CONST_extents_d[Dim::y] < CONST_cell_width_d[0] - 2 * p_pos_y_diff))) {
-            p_mdir[(Dim::y) * opp_k2_dat1_stride_d] = 1;
-        }
-        else {
-            p_mdir[(Dim::y) * opp_k2_dat1_stride_d] = -1;
-        }
-    }
+        // Find whether the final position is towards positive or negative direction
+        const bool is_x_positive = (((p_pos_x_diff > CONST_cell_width_d[0]) &&
+                                    (CONST_extents_d[Dim::x] > 2 * p_pos_x_diff - CONST_cell_width_d[0])) ||
+                                    ((p_pos_x_diff < 0) && (CONST_extents_d[Dim::x] < CONST_cell_width_d[0] - 2 * p_pos_x_diff)));
 
+        const bool is_y_positive = (((p_pos_y_diff > CONST_cell_width_d[0]) &&
+                                    (CONST_extents_d[Dim::y] > 2 * p_pos_y_diff - CONST_cell_width_d[0])) ||
+                                    ((p_pos_y_diff < 0) && (CONST_extents_d[Dim::y] < CONST_cell_width_d[0] - 2 * p_pos_y_diff)));
+
+        p_mdir[(Dim::x) * opp_k2_dat1_stride_d] = is_x_positive ? 1 : -1;
+        p_mdir[(Dim::y) * opp_k2_dat1_stride_d] = is_y_positive ? 1 : -1;
+    }
+    // Step X : end
+
+    // Step (2) : A method to identify if the particle has reached its final mesh cell
     // check for x direction movement
     if ((p_pos_x_diff >= 0.0) && (p_pos_x_diff <= CONST_cell_width_d[0])) {
         p_mdir[(Dim::x) * opp_k2_dat1_stride_d] = 0; // within cell in x direction
     }
     else if (p_mdir[(Dim::x) * opp_k2_dat1_stride_d] > 0) {
-        opp_p2c[0] = opp_c2c[(CellMap::xu_y) * opp_k2_c2c_map_stride_d];
+        opp_p2c[0] = opp_c2c[(CellMap::xu_y) * opp_k2_c2c_map_stride_d]; // Step (5) : Calculate the next most probable cell index to search
         { opp_move_status_flag = OPP_NEED_MOVE; }; return;
     }
     else if (p_mdir[(Dim::x) * opp_k2_dat1_stride_d] < 0) {
-        opp_p2c[0] = opp_c2c[(CellMap::xd_y) * opp_k2_c2c_map_stride_d];
+        opp_p2c[0] = opp_c2c[(CellMap::xd_y) * opp_k2_c2c_map_stride_d]; // Step (5) : Calculate the next most probable cell index to search
         { opp_move_status_flag = OPP_NEED_MOVE; }; return;
     }
 
+    // Step (2) : A method to identify if the particle has reached its final mesh cell
     // check for y direction movement
     if ((p_pos_y_diff >= 0.0) && (p_pos_y_diff <= CONST_cell_width_d[0])) {
         p_mdir[(Dim::y) * opp_k2_dat1_stride_d] = 0; // within cell in y direction
     }
     else if (p_mdir[(Dim::y) * opp_k2_dat1_stride_d] > 0) {
-        opp_p2c[0] = opp_c2c[(CellMap::x_yu) * opp_k2_c2c_map_stride_d];
+        opp_p2c[0] = opp_c2c[(CellMap::x_yu) * opp_k2_c2c_map_stride_d]; // Step (5) : Calculate the next most probable cell index to search
         { opp_move_status_flag = OPP_NEED_MOVE; }; return;
     }
     else if (p_mdir[(Dim::y) * opp_k2_dat1_stride_d] < 0) {
-        opp_p2c[0] = opp_c2c[(CellMap::x_yd) * opp_k2_c2c_map_stride_d];
+        opp_p2c[0] = opp_c2c[(CellMap::x_yd) * opp_k2_c2c_map_stride_d]; // Step (5) : Calculate the next most probable cell index to search
         { opp_move_status_flag = OPP_NEED_MOVE; }; return;
     }
+
+    // Step X : Any calculations required on all hopped cells
+    /* No computations in NESO-Advection */
 
     { opp_move_status_flag = OPP_MOVE_DONE; };
 }

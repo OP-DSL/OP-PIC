@@ -22,8 +22,9 @@ inline void move_kernel(
     const double *point_pos, double* point_lc,
     const double *cell_volume, const double *cell_det
 ) {
-    const double coefficient2 = (1.0 / 6.0) / (*cell_volume);
 
+    // Step (1) : Specifying computations to be carried out for each mesh element, until its final destination cell
+    const double coefficient2 = (1.0 / 6.0) / (*cell_volume);
     for (int i=0; i<4; i++) { /*loop over vertices*/
 
         point_lc[i] = coefficient2 * (
@@ -32,21 +33,26 @@ inline void move_kernel(
             cell_det[i * 4 + 2] * point_pos[1] -
             cell_det[i * 4 + 3] * point_pos[2]);
     }
+    // Step (1) : end
 
+    // Step (2) : A method to identify if the particle has reached its final mesh cell
     if ((point_lc[0] > (-1) * 1e-10) && ((point_lc[0] - 1.0) < 1e-10) &&
         (point_lc[1] > (-1) * 1e-10) && ((point_lc[1] - 1.0) < 1e-10) &&
         (point_lc[2] > (-1) * 1e-10) && ((point_lc[2] - 1.0) < 1e-10) &&
         (point_lc[3] > (-1) * 1e-10) && ((point_lc[3] - 1.0) < 1e-10)) {
 
+        // Step (3) : Computations to be carried out at the final destination mesh cell
+        /* No computations in Mini-FEM-PIC */
+
         { opp_move_status_flag = OPP_MOVE_DONE; };
         return;
     }
 
-    // outside the last known cell, find most negative weight and
-    // use that cell_index to reduce computations
+    // Outside the last known cell, find most negative weight and move to it if valid
+
+    // Step (5) : Calculate the next most probable cell index to search
     int min_i = 0;
     double min_lc = point_lc[0];
-
     for (int i=1; i<4; i++) {
         if (point_lc[i] < min_lc) {
             min_lc = point_lc[i];
@@ -55,10 +61,15 @@ inline void move_kernel(
     }
 
     if (opp_c2c[min_i] >= 0) { // is there a neighbor in this direction?
-        (*opp_p2c) = opp_c2c[min_i];
+
+        // Step X : Any calculations required on all hopped cells
+        /* No computations in Mini-FEM-PIC */
+
+        (*opp_p2c) = opp_c2c[min_i]; // Assign new p2c mapping
         { opp_move_status_flag = OPP_NEED_MOVE; };
     }
     else {
+        // Step (4) : Actions to be carried out if the particle has moved out of the mesh domain
         (*opp_p2c) = INT_MAX;
         { opp_move_status_flag = OPP_NEED_REMOVE; };
     }
@@ -120,8 +131,9 @@ void opp_dev_move_kernel_sycl(opp_set set, const int nargs, opp_arg *args, opp_m
             const double *point_pos, double* point_lc,
             const double *cell_volume, const double *cell_det
         ) {
-            const double coefficient2 = (1.0 / 6.0) / (*cell_volume);
 
+            // Step (1) : Specifying computations to be carried out for each mesh element, until its final destination cell
+            const double coefficient2 = (1.0 / 6.0) / (*cell_volume);
             for (int i=0; i<4; i++) { /*loop over vertices*/
 
                 point_lc[(i) * opp_k4_dat1_stride_sycl[0]] = coefficient2 * (
@@ -130,21 +142,26 @@ void opp_dev_move_kernel_sycl(opp_set set, const int nargs, opp_arg *args, opp_m
                     cell_det[(i * 4 + 2) * opp_k4_dat3_stride_sycl[0]] * point_pos[(1) * opp_k4_dat0_stride_sycl[0]] -
                     cell_det[(i * 4 + 3) * opp_k4_dat3_stride_sycl[0]] * point_pos[(2) * opp_k4_dat0_stride_sycl[0]]);
             }
+            // Step (1) : end
 
+            // Step (2) : A method to identify if the particle has reached its final mesh cell
             if ((point_lc[(0) * opp_k4_dat1_stride_sycl[0]] > (-1) * 1e-10) && ((point_lc[(0) * opp_k4_dat1_stride_sycl[0]] - 1.0) < 1e-10) &&
                 (point_lc[(1) * opp_k4_dat1_stride_sycl[0]] > (-1) * 1e-10) && ((point_lc[(1) * opp_k4_dat1_stride_sycl[0]] - 1.0) < 1e-10) &&
                 (point_lc[(2) * opp_k4_dat1_stride_sycl[0]] > (-1) * 1e-10) && ((point_lc[(2) * opp_k4_dat1_stride_sycl[0]] - 1.0) < 1e-10) &&
                 (point_lc[(3) * opp_k4_dat1_stride_sycl[0]] > (-1) * 1e-10) && ((point_lc[(3) * opp_k4_dat1_stride_sycl[0]] - 1.0) < 1e-10)) {
 
+                // Step (3) : Computations to be carried out at the final destination mesh cell
+                /* No computations in Mini-FEM-PIC */
+
                 { opp_move_status_flag = OPP_MOVE_DONE; };
                 return;
             }
 
-            // outside the last known cell, find most negative weight and
-            // use that cell_index to reduce computations
+            // Outside the last known cell, find most negative weight and move to it if valid
+
+            // Step (5) : Calculate the next most probable cell index to search
             int min_i = 0;
             double min_lc = point_lc[(0) * opp_k4_dat1_stride_sycl[0]];
-
             for (int i=1; i<4; i++) {
                 if (point_lc[(i) * opp_k4_dat1_stride_sycl[0]] < min_lc) {
                     min_lc = point_lc[(i) * opp_k4_dat1_stride_sycl[0]];
@@ -153,10 +170,15 @@ void opp_dev_move_kernel_sycl(opp_set set, const int nargs, opp_arg *args, opp_m
             }
 
             if (opp_c2c[(min_i) * opp_k4_c2c_map_stride_sycl[0]] >= 0) { // is there a neighbor in this direction?
-                (*opp_p2c) = opp_c2c[(min_i) * opp_k4_c2c_map_stride_sycl[0]];
+
+                // Step X : Any calculations required on all hopped cells
+                /* No computations in Mini-FEM-PIC */
+
+                (*opp_p2c) = opp_c2c[(min_i) * opp_k4_c2c_map_stride_sycl[0]]; // Assign new p2c mapping
                 { opp_move_status_flag = OPP_NEED_MOVE; };
             }
             else {
+                // Step (4) : Actions to be carried out if the particle has moved out of the mesh domain
                 (*opp_p2c) = INT_MAX;
                 { opp_move_status_flag = OPP_NEED_REMOVE; };
             }

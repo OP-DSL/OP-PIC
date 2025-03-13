@@ -1,18 +1,24 @@
 # OP-PIC FemPIC (Already code generated for reference)
 
+** Please follow the instructions provided in the main readme file first. **
+** This README file contains only additional information regarding the application. **
+
+##
 **This folder contain both user written code and OP-PIC code generated code.**
 
 All the user written code will have the below comment;
-
-`// *********************************************`<br> 
-`// USER WRITTEN CODE                            `<br> 
-`// *********************************************`
+```cpp
+// *********************************************
+// USER WRITTEN CODE                            
+// *********************************************
+```
 
 The code-generator has added the below comment to all the generated code; 
-
-`// *********************************************`<br>
-`// AUTO GENERATED CODE                          `<br>
-`// *********************************************`
+```cpp
+// *********************************************
+// AUTO GENERATED CODE                          
+// *********************************************
+```
 
 If code-generator is invoked in this folder, the available generated code will be replaced with the newly generated code (May generate the same if `fempic.cpp`|`fempic_hdf5.cpp` or `kernels.h` is not changed)
 
@@ -48,30 +54,36 @@ Additionally, FemPIC is also implemented with OP-PIC HDF5 API calls (`opp_decl_s
 Both the regular and the HDF5 applications can be independently code generated using the below.
 
 For regular OP-PIC application without HDF5, use
-`python3 $OPP_TRANSLATOR -v -I$OPP_PATH/include/ --file_paths fempic.cpp`
+```bash
+python3 $OPP_TRANSLATOR -v -I$OPP_PATH/include/ --file_paths fempic.cpp
+```
 
 If HDF5 is required, invoke the below command.
-`python3 $OPP_TRANSLATOR -v -I$OPP_PATH/include/ --file_paths fempic_hdf5.cpp`
+```bash
+python3 $OPP_TRANSLATOR -v -I$OPP_PATH/include/ --file_paths fempic_hdf5.cpp
+```
 
 Once the code-generator is invoked, a `fempic_opp.cpp` or `fempic_hdf5_opp.cpp` file and `seq`, `omp`, `mpi`, `cuda`, `hip` and `sycl` folders, including `opp_kernels.<cpp|cu>` and a loop kernel header file per unique `opp_par_loop` or `opp_particle_move` loop will get generated.
 
 ## Compile
 
 Once the platform specific target files are generated, use the provided `MakeFile` to compile the application.
- * `make seq`
- * `make mpi`
- * `make omp`
- * `make omp_mpi`
- * `make cuda`
- * `make cuda_mpi`
- * `make hip`
- * `make hip_mpi`
- * `make sycl`
- * `make sycl_mpi`
- * `make mpi_hdf5`
- * `make cuda_mpi_hdf5`
- * `make hip_mpi_hdf5`
- * `make sycl_mpi_hdf5`
+```bash
+ make seq
+ make mpi
+ make omp
+ make omp_mpi
+ make cuda
+ make cuda_mpi
+ make hip
+ make hip_mpi
+ make sycl
+ make sycl_mpi
+ make mpi_hdf5
+ make cuda_mpi_hdf5
+ make hip_mpi_hdf5
+ make sycl_mpi_hdf5
+```
 
 ### Configuration
 An example configuration file is provided in `OP-PIC/app_fempic_cg/configs` folder.
@@ -82,19 +94,21 @@ In addition, the config file include OP-PIC DSL simulation parameters, such as g
 
 # Run
 To run the application, below commands can be used.
- * `bin/seq configs/coarse.param`
- * `bin/omp configs/coarse.param`
- * `bin/cuda configs/coarse.param`
- * `bin/hip configs/coarse.param`
- * `bin/sycl configs/coarse.param`
- * `mpirun -np <num_ranks> bin/mpi configs/coarse.param`
- * `mpirun -np <num_ranks> bin/cuda_mpi configs/coarse.param`
- * `mpirun -np <num_ranks> bin/hip_mpi configs/coarse.param`
- * `mpirun -np <num_ranks> bin/sycl_mpi configs/coarse.param`
+```bash
+    bin/seq configs/coarse.param
+    bin/omp configs/coarse.param
+    bin/cuda configs/coarse.param
+    bin/hip configs/coarse.param
+    bin/sycl configs/coarse.param
+    mpirun -np <num_ranks> bin/mpi configs/coarse.param
+    mpirun -np <num_ranks> bin/cuda_mpi configs/coarse.param
+    mpirun -np <num_ranks> bin/hip_mpi configs/coarse.param
+    mpirun -np <num_ranks> bin/sycl_mpi configs/coarse.param
 
- * `mpirun -np <num_ranks> bin/mpi_hdf5 configs/coarse.param`
- * `mpirun -np <num_ranks> bin/cuda_mpi_hdf5 configs/coarse.param`
- * `mpirun -np <num_ranks> bin/hip_mpi_hdf5 configs/coarse.param`
- * `mpirun -np <num_ranks> bin/sycl_mpi_hdf5 configs/coarse.param`
+    mpirun -np <num_ranks> bin/mpi_hdf5 configs/coarse.param
+    mpirun -np <num_ranks> bin/cuda_mpi_hdf5 configs/coarse.param
+    mpirun -np <num_ranks> bin/hip_mpi_hdf5 configs/coarse.param
+    mpirun -np <num_ranks> bin/sycl_mpi_hdf5 configs/coarse.param
+```
 
 In addition, `srun` can be used for execution.

@@ -3,7 +3,7 @@
 #SBATCH --job-name=run_fem8
 #SBATCH --partition=mi300x 
 #SBATCH --nodes=1          
-#SBATCH --ntasks=96          # ntasks=96
+#SBATCH --ntasks=64          # ntasks=96
 #SBATCH --cpus-per-task=1
 #SBATCH --time=0-02:00:00  
 #SBATCH --account=do018
@@ -34,21 +34,25 @@ echo "Git commit " $gitcommit
 cd -
 echo "********************************************************"
 
-export OMP_NUM_THREADS=1
-export OMP_PLACES=cores
-export OMP_PROC_BIND=close
+rocm-smi
+lscpu
 
-export HIP_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
+# export OMP_NUM_THREADS=1
+# export OMP_PLACES=cores
+# export OMP_PROC_BIND=close
 
-export I_MPI_PMI_LIBRARY=/lib64/libpmi.so
+# export HIP_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
 
-plasma_den=1e18
+# export I_MPI_PMI_LIBRARY=/lib64/libpmi.so
+unset I_MPI_PMI_LIBRARY
+
+plasma_den=0.9625e18
 use_hole_fill=1
 use_dh=0
 
 for gpus in 8; do
     for config in 48000 96000 192000; do
-        for gpu_red_arrays in 1 2 4 8 16 32 64 128 256 512 1024 2048 4096; do
+        for gpu_red_arrays in 1 512 1024; do
             for run in 1 2; do
                 (( actual_config=config*gpus ))
                 echo "Running MPI BLOCK " $actual_config $run $gpus $gpu_red_arrays $(date +"%Y-%m-%d %H:%M:%S")
@@ -74,7 +78,7 @@ for gpus in 8; do
                 sed -i "s/REAL plasma_den           = 1.0e18/REAL plasma_den     = ${plasma_den}/" ${currentfilename}
                 sed -i "s/INT gpu_reduction_arrays = 16/INT gpu_reduction_arrays = ${gpu_red_arrays}/" ${currentfilename}
 
-                srun --distribution=block:block --hint=nomultithread $binary $currentfilename > $folder/log_G${gpus}_M${actual_config}_D${plasma_den}_ARR${gpu_red_arrays}_R${run}.log;
+                mpirun -np 64 $binary $currentfilename > $folder/log_G${gpus}_M${actual_config}_D${plasma_den}_ARR${gpu_red_arrays}_R${run}.log;
             done
         done
     done

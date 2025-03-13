@@ -1,4 +1,14 @@
 #!/bin/bash
+
+#SBATCH --job-name=run_cab
+#SBATCH --partition=mi300x 
+#SBATCH --nodes=1          
+#SBATCH --ntasks=8
+#SBATCH --cpus-per-task=1
+#SBATCH --time=0-02:00:00  
+#SBATCH --account=do018
+#SBATCH --exclusive
+
 echo "Start date and time: $(date +"%Y-%m-%d %H:%M:%S")"
 
 runFolder=$PWD"/MPI_SR"${use_seg_red}"_"$(date +"D_%Y_%m_%d_T_%I_%M_%S")
@@ -28,9 +38,14 @@ export OMP_PROC_BIND=close
 vel_mult=0.0
 expand=1
 
-for gpus in 4 2 1; do
-    for config in 3000 1500 750; do
-        for gpu_red_arrays in 1024 512 256 128 64 32 16 8 4 2 1; do
+export I_MPI_DEBUG=10
+export I_MPI_PIN_DOMAIN=socket
+export I_MPI_PIN_PROCESSOR_LIST=all
+export I_MPI_PIN_RESPECT_CPUSET=0
+
+for gpus in 1 2 4 8 ; do
+    for config in 750 1500 3000; do
+        for gpu_red_arrays in 256; do # 1024 512 256 128 64 32 16 8 4 2 1
             for run in 1 2; do
 
                 echo "Running MPI BLOCK " $config $run $gpus $vel_mult

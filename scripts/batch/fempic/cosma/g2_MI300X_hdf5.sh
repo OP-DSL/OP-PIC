@@ -3,7 +3,7 @@
 #SBATCH --job-name=run_fem2
 #SBATCH --partition=mi300x 
 #SBATCH --nodes=1          
-#SBATCH --ntasks=24          # ntasks=24
+#SBATCH --ntasks=16          # ntasks=24
 #SBATCH --cpus-per-task=1
 #SBATCH --time=0-02:00:00  
 #SBATCH --account=do018
@@ -38,17 +38,17 @@ export OMP_NUM_THREADS=1
 export OMP_PLACES=cores
 export OMP_PROC_BIND=close
 
-export HIP_VISIBLE_DEVICES=6,7,0,1,2,3,4,5
+export HIP_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
 
 export I_MPI_PMI_LIBRARY=/lib64/libpmi.so
 
-plasma_den=1e18
+plasma_den=0.9625e18
 use_hole_fill=1
 use_dh=0
 
 for gpus in 2; do
     for config in 48000 96000 192000; do
-        for gpu_red_arrays in 1 2 4 8 16 32 64 128 256 512 1024 2048 4096; do
+        for gpu_red_arrays in 1 512 1024; do
             for run in 1 2; do
                 (( actual_config=config*gpus ))
                 echo "Running MPI BLOCK " $actual_config $run $gpus $gpu_red_arrays $(date +"%Y-%m-%d %H:%M:%S")

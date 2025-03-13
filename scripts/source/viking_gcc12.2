@@ -1,0 +1,41 @@
+#!/bin/bash
+
+module purge
+
+module load GCC/12.2.0
+module load OpenMPI/4.1.4-GCC-12.2.0
+module load PETSc/3.19.2-foss-2022b
+module load CUDA/12.2.2
+module load HDF5/1.14.0-gompi-2022b
+
+export NVCCFLAGS_ADD='-gencode arch=compute_90,code=sm_90'
+
+export OPP=$HOME/phd/OP-PIC
+export OPP_INSTALL_PATH=$OPP/opp_install
+export OPP_TRANSLATOR=$OPP/opp_translator/translator
+export OPP_PATH=$OPP/opp_lib
+
+export CC_COMPILER=g++
+export MPI_COMPILER=mpicxx
+
+source $OPP/opp_translator/opp_venv/bin/activate
+
+
+alias nv='nvidia-smi -l 1'
+alias l='cd $HOME/phd/OP-PIC/opp_lib'
+alias f='cd $HOME/phd/OP-PIC/app_fempic'
+alias fc='cd $HOME/phd/OP-PIC/app_fempic_cg'
+alias ac='cd $HOME/phd/OP-PIC/app_neso_advection_cg'
+alias a='cd $HOME/phd/OP-PIC/app_neso_advection'
+alias c='cd $HOME/phd/OP-PIC/app_cabanapic'
+alias t='cd $HOME/phd/OP-PIC/opp_translator'
+
+
+# export CUDA_INSTALL_PATH=/opt/apps/eb/software/NVHPC/23.7-CUDA-12.1.1/Linux_x86_64/23.7/cuda
+# export CUDA_INSTALL_PATH=/opt/apps/eb/software/CUDA/12.2.2
+# export NVCCFLAGS_ADD='-gencode arch=compute_90,code=sm_90'
+# export PETSC_INSTALL_PATH=/opt/apps/eb/software/PETSc/3.19.2-foss-2022b
+# export LD_LIBRARY_PATH=$PETSC_INSTALL_PATH/lib:$LD_LIBRARY_PATH
+# module load NVHPC/23.7-CUDA-12.1.1
+# module load OpenMPI/4.1.5-NVHPC-23.7-CUDA-12.1.1
+

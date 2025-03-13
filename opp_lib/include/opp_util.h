@@ -32,14 +32,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#include <vector>
-#include <algorithm>
-#include <random>
-#include <string>
-#include <cstring>
-#include <sys/time.h>
+#include <opp_defs.h>
 
-typedef struct opp_set_core *opp_set;
+#ifdef USE_MPI
+extern MPI_Comm OPP_MPI_WORLD;
+#endif
 
 #ifndef MIN
 #define MIN(a, b) ((a < b) ? (a) : (b))
@@ -48,11 +45,13 @@ typedef struct opp_set_core *opp_set;
 #define MAX(a, b) ((a > b) ? (a) : (b))
 #endif
 
+#define FMOD(a, b) ((a) - (b) * trunc((a) / (b)))
+
 #define ROUND_UP(bytes) (((bytes) + 15) & ~15)
 #define ROUND_UP_64(bytes) (((bytes) + 63) & ~63)
 
 //********************************************************************************
-std::string getTimeStr();
+std::string get_time_str();
 
 //********************************************************************************
 char *copy_str(char const *src);
@@ -100,7 +99,11 @@ int file_exist(char const *filename);
 
 bool opp_type_equivalence(const char *a, const char *b);
 
-
+void opp_compress_write(const std::string &filename, 
+                        const int* data, const size_t count);
+void opp_decompress_read(const std::string &filename, size_t originalSize, 
+                        int* data);
+   
 //*************************************************************************************************
 template <typename RNG>
 inline std::vector<std::vector<double>>
@@ -203,3 +206,186 @@ inline void get_decomp_1d(const T N_compute_units, const T N_work_items,
     *rstart = start;
     *rend = end;
 }
+
+//*************************************************************************************************
+template <typename T>
+std::vector<T> sort_iota_by_key(const T* keys, size_t size) 
+{ 
+    std::vector<T> idx(size);
+    std::iota(idx.begin(), idx.end(), 0);
+
+    std::sort(idx.begin(), idx.end(),
+        [keys](T i1, T i2) { return keys[i1] < keys[i2]; });
+
+    return idx;
+}
+
+//*************************************************************************************************
+template <typename T>
+std::vector<T> shuffle_iota_by_key(const T* keys, size_t size) 
+{
+    std::vector<T> idx(size);
+    std::iota(idx.begin(), idx.end(), 0);
+
+    // Partition the indices based on whether the key is MAX_CELL_INDEX
+    auto partition_point = std::partition(idx.begin(), idx.end(), 
+        [keys](T i) { return keys[i] != MAX_CELL_INDEX; });
+    idx.resize(partition_point - idx.begin());
+
+    // TODO : Since relative order is not preserved in std::partition, 
+    // we might be able to remove below shuffle
+    // std::random_device rd;
+    // std::mt19937 g(rd());
+    // std::shuffle(idx.begin(), idx.end(), g);
+
+    return idx;
+}
+
+//*************************************************************************************************
+inline void getDatTypeSize(opp_data_type dtype, std::string& type, int& size)
+{
+    if (dtype == DT_REAL) {
+        type = "double";
+        size = sizeof(OPP_REAL);
+    }
+    else if (dtype == DT_INT) {
+        type = "int";
+        size = sizeof(OPP_INT);       
+    }
+    else {
+        std::cerr << "Data type in Dat not supported" << std::endl;
+    }
+}
+
+//*************************************************************************************************
+inline void opp_printf(const char* function, const char *format, ...)
+{
+    char buf[LOG_STR_LEN];
+    va_list args;
+    va_start(args, format);
+    vsnprintf(buf, LOG_STR_LEN, format, args);
+    va_end(args);
+
+    printf("%s[%d][%d] - %s\n", function, OPP_rank, OPP_main_loop_iter, buf);
+    fflush(stdout);
+}
+
+/*************************************************************************************************/
+inline void opp_get_global_values(const int64_t value, int64_t& gbl_value, int64_t& gbl_max, int64_t& gbl_min) 
+{
+#ifdef USE_MPI
+    MPI_Reduce(&value, &gbl_value, 1, MPI_INT64_T, MPI_SUM, OPP_ROOT, OPP_MPI_WORLD);
+    MPI_Reduce(&value, &gbl_max, 1, MPI_INT64_T, MPI_MAX, 0, OPP_MPI_WORLD);
+    MPI_Reduce(&value, &gbl_min, 1, MPI_INT64_T, MPI_MIN, 0, OPP_MPI_WORLD);
+#else
+    gbl_value = value;
+    gbl_max = value;
+    gbl_min = value;
+#endif
+}
+
+/*************************************************************************************************/
+inline int64_t opp_get_global_value(int64_t value) {
+
+    int64_t gbl_value = 0;
+#ifdef USE_MPI
+        MPI_Reduce(&value, &gbl_value, 1, MPI_INT64_T, MPI_SUM, OPP_ROOT, OPP_MPI_WORLD);
+#else
+        gbl_value = value;
+#endif
+    return gbl_value;
+}
+
+/*************************************************************************************************
+ * This is a utility function to log the size of the provided set
+*/
+inline void opp_log_set_size_statistics(opp_set set, int log_boundary_count = 1) {
+
+#ifdef USE_MPI
+
+    std::map<int, std::map<int,int>> particle_counts;
+
+    std::vector<int> count_per_iter(OPP_comm_size, 0);
+    MPI_Gather(&(set->size), 1, MPI_INT, count_per_iter.data(), 1, MPI_INT, 0, OPP_MPI_WORLD);
+    int sum = 0, average = 0;
+
+    auto& cc = particle_counts[OPP_main_loop_iter];
+    for (int i = 0; i < OPP_comm_size; i++) {
+        cc[count_per_iter[i]] = i;
+        sum += count_per_iter[i];
+    }
+    average = sum / OPP_comm_size;
+
+    std::string max_log = ""; 
+    int counter_max = 1;
+    for (auto it = cc.rbegin(); it != cc.rend(); ++it) {
+        max_log += std::string(" ") + std::to_string(it->first) + "|" + std::to_string(it->second);
+        if (counter_max == log_boundary_count) break;
+        counter_max++;
+    }
+    std::string min_log = "";
+    int counter_min = 1;
+    for (auto it = cc.begin(); it != cc.end(); ++it) {
+        min_log += std::string(" ") + std::to_string(it->first) + "|" + std::to_string(it->second);
+        if (counter_min == log_boundary_count) break;
+        counter_min++;
+    }
+
+    if (OPP_rank == 0) {
+        opp_printf("ParticleSet", "sum %d average %d max [%s ] min [%s ]", 
+            sum, average, max_log.c_str(), min_log.c_str());
+    }
+#endif
+}
+
+//*************************************************************************************************
+// Below can be used to create files per MPI rank for logging
+/*
+// If using, paste below in opp_util.cpp file
+FILE* rank_log_file = nullptr;
+const char* log_folder = "log_files";
+*/
+// #include <sys/stat.h>
+// #include <sys/types.h>
+
+// extern FILE* rank_log_file;
+// extern const char* log_folder;
+
+// // Function to initialize logging
+// inline void opp_initialize_logging() {
+//     // Create log folder if it doesn't exist
+//     struct stat st;
+//     if (stat(log_folder, &st) != 0) {
+//         if (mkdir(log_folder, 0755) != 0 && errno != EEXIST) {
+//             fprintf(stderr, "Failed to create log folder '%s'\n", log_folder);
+//             exit(-1);
+//         }
+//     }
+
+//     // Construct the file name for the current rank
+//     char file_name[LOG_STR_LEN];
+//     snprintf(file_name, LOG_STR_LEN, "%s/log_rank_%d.txt", log_folder, OPP_rank);
+
+//     // Open the file for appending (creates if it doesn't exist)
+//     rank_log_file = fopen(file_name, "a");
+//     if (!rank_log_file) {
+//         fprintf(stderr, "Failed to open log file '%s'\n", file_name);
+//         exit(-1);
+//     }
+// }
+
+// // Logging function
+// inline void opp_printf(const char* function, const char* format, ...) {
+//     if (!rank_log_file) {
+//         opp_initialize_logging();
+//     }
+
+//     char buf[LOG_STR_LEN];
+//     va_list args;
+//     va_start(args, format);
+//     vsnprintf(buf, LOG_STR_LEN, format, args);
+//     va_end(args);
+
+//     fprintf(rank_log_file, "%s[%d][%d] - %s\n", function, OPP_rank, OPP_main_loop_iter, buf);
+//     fflush(rank_log_file);  // Ensure the line is written immediately
+// }

@@ -15,6 +15,7 @@ BOOL opp_profile_all        = false
 INT opp_gpu_direct = 0
 BOOL opp_global_move = true
 REAL grid_spacing           = 0.5
+BOOL opp_segmented_red = false
 
 # HoleFill_All Sort_All Shuffle_All Sort_Periodic Shuffle_Periodic
 STRING opp_fill = Shuffle_Periodic

@@ -31,12 +31,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <opp_mpi.h>
+#include "opp_increase_part_count.cpp"
+#include "opp_particle_mover.cpp"
 
-opp_move_var move_var;
-void opp_part_pack(opp_set set);
-void opp_part_unpack(opp_set set);
-
-char opp_move_status_flag = OPPX_MOVE_DONE;
+char opp_move_status_flag = OPP_MOVE_DONE;
 bool opp_move_hop_iter_one_flag = true;
 OPP_INT* opp_p2c = nullptr;
 OPP_INT* opp_c2c = nullptr;
@@ -56,13 +54,11 @@ void opp_init(int argc, char **argv)
 #endif
 
     OPP_MPI_WORLD = MPI_COMM_WORLD;
-    OPP_MPI_GLOBAL = MPI_COMM_WORLD;
-    
-    MPI_Comm_rank(OPP_MPI_WORLD, &OPP_rank);
-    MPI_Comm_size(OPP_MPI_WORLD, &OPP_comm_size);
 
-    if (OPP_rank == OPP_ROOT)
-    {
+    MPI_Comm_rank(MPI_COMM_WORLD, &OPP_rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &OPP_comm_size);
+
+    if (OPP_rank == OPP_ROOT) {
         std::string log = "Running on MPI with " + std::to_string(OPP_comm_size) + " ranks";
         opp_printf("OP-PIC", "%s", log.c_str());
         opp_printf("OP-PIC", "---------------------------------------------");
@@ -79,30 +75,17 @@ void opp_init(int argc, char **argv)
 //*******************************************************************************
 void opp_exit() 
 {
-    if (OPP_DBG) opp_printf("opp_exit", "");
+    if (OPP_DBG) 
+        opp_printf("opp_exit", "");
 
     globalMover.reset();
     cellMapper.reset();
     boundingBox.reset();
     comm.reset();
-    
-    {   
-        opp_halo_destroy(); // free memory allocated to halos and mpi_buffers 
-        opp_partition_destroy(); // free memory used for holding partition information
-        opp_part_comm_destroy(); // free memory allocated for particle communication
-        
-        // opp_host_free(set_import_buffer_size);
-
-        // for (int i = 0; i < OPP_import_index; i++)
-        //     opp_host_free(OPP_import_list[i]);
-        // if (OPP_import_list)
-        //     opp_host_free(OPP_import_list);
-        
-        // for (int i = 0; i < OPP_export_index; i++)
-        //     opp_host_free(OPP_export_list[i]);
-        // if (OPP_export_list)
-        //     opp_host_free(OPP_export_list);
-    }
+      
+    opp_halo_destroy(); // free memory allocated to halos and mpi_buffers 
+    opp_partition_destroy(); // free memory used for holding partition information
+    opp_part_comm_destroy(); // free memory allocated for particle communication
 
     opp_exit_core();
 
@@ -111,14 +94,13 @@ void opp_exit()
 #else
     MPI_Finalize();
 #endif
-    
 }
 
 //****************************************
 void opp_abort(std::string s)
 {
     opp_printf("opp_abort", "%s", s.c_str());
-    MPI_Abort(OPP_MPI_WORLD, 2);
+    MPI_Abort(MPI_COMM_WORLD, 2);
 }
 
 //****************************************
@@ -126,19 +108,30 @@ opp_set opp_decl_set(int size, char const *name)
 {
     return opp_decl_set_core(size, name);
 }
+//****************************************
+opp_set opp_decl_particle_set(int size, char const *name, opp_set cells_set)
+{
+    return opp_decl_particle_set_core(size, name, cells_set);
+}
+opp_set opp_decl_particle_set(char const *name, opp_set cells_set)
+{
+    return opp_decl_particle_set_core(name, cells_set);
+}
 
 //****************************************
 opp_map opp_decl_map(opp_set from, opp_set to, int dim, int *imap, char const *name)
 {
     opp_map map = opp_decl_map_core(from, to, dim, imap, name);
 
-    if (OPP_DBG) opp_printf("opp_decl_map", OPP_rank, " map: %s | ptr: %p | dim: %d", map->name, map->map, map->dim);
+    if (OPP_DBG) 
+        opp_printf("opp_decl_map", " map: %s | ptr: %p | dim: %d", 
+                    map->name, map->map, map->dim);
 
     return map;
 }
 
 //****************************************
-opp_dat opp_decl_mesh_dat(opp_set set, int dim, opp_data_type dtype, void *data, char const *name)
+opp_dat opp_decl_dat(opp_set set, int dim, opp_data_type dtype, void *data, char const *name)
 {
     std::string type = "";
     int size = -1;
@@ -148,18 +141,9 @@ opp_dat opp_decl_mesh_dat(opp_set set, int dim, opp_data_type dtype, void *data,
 }
 
 //****************************************
-opp_dat opp_decl_dat(opp_set set, int dim, opp_data_type dtype, void *data, char const *name, bool cell_index)
-{
-    if (set->is_particle) 
-        return opp_decl_part_dat(set, dim, dtype, data, name, cell_index);
-    else
-        return opp_decl_mesh_dat(set, dim, dtype, data, name);
-}
-
-//****************************************
 opp_map opp_decl_map_txt(opp_set from, opp_set to, int dim, const char* file_name, char const *name)
 {
-    int* map_data = (int*)opp_load_from_file_core(file_name, from->size, dim, "int", sizeof(int));
+    OPP_INT* map_data = (OPP_INT*)opp_load_from_file_core(file_name, from->size, dim, "int", sizeof(OPP_INT));
 
     opp_map map = opp_decl_map(from, to, dim, map_data, name);
 
@@ -190,7 +174,8 @@ opp_arg opp_arg_dat(opp_dat dat, int idx, opp_map map, int dim, const char *typ,
     if (dat == nullptr) opp_abort("dat is NULL at opp_arg_dat1");
     return opp_arg_dat_core(dat, idx, map, dat->dim, dat->type, nullptr, acc);
 }
-opp_arg opp_arg_dat(opp_dat dat, int idx, opp_map map, int dim, const char *typ, opp_map p2c_map, opp_access acc, bool offset)
+opp_arg opp_arg_dat(opp_dat dat, int idx, opp_map map, int dim, const char *typ, opp_map p2c_map, 
+                        opp_access acc, bool offset)
 {
     if (dat == nullptr) opp_abort("dat is NULL at opp_arg_dat2");
     return opp_arg_dat_core(dat, idx, map, dat->dim, dat->type, p2c_map->p2c_dat, acc);
@@ -253,212 +238,6 @@ opp_arg opp_arg_dat(opp_map data_map, int idx, opp_map map, opp_map p2c_map, opp
 }
 
 //****************************************
-// template <class T> opp_arg opp_arg_gbl(T *data, int dim, char const *typ, opp_access acc);
-opp_arg opp_arg_gbl(double *data, int dim, char const *typ, opp_access acc)
-{
-    return opp_arg_gbl_core(data, dim, typ, acc);
-}
-opp_arg opp_arg_gbl(int *data, int dim, char const *typ, opp_access acc)
-{
-    return opp_arg_gbl_core(data, dim, typ, acc);
-}
-opp_arg opp_arg_gbl(const bool *data, int dim, char const *typ, opp_access acc)
-{
-    return opp_arg_gbl_core(data, dim, typ, acc);
-}
-
-//****************************************
-opp_set opp_decl_particle_set(int size, char const *name, opp_set cells_set)
-{
-    return opp_decl_particle_set_core(size, name, cells_set);
-}
-opp_set opp_decl_particle_set(char const *name, opp_set cells_set)
-{
-    return opp_decl_particle_set_core(name, cells_set);
-}
-
-//****************************************
-opp_dat opp_decl_part_dat(opp_set set, int dim, opp_data_type dtype, void *data, char const *name, bool cell_index)
-{
-    std::string type = "";
-    int size = -1;
-    getDatTypeSize(dtype, type, size);
-
-    return opp_decl_particle_dat_core(set, dim, type.c_str(), size, (char*)data, name, cell_index);
-}
-
-//****************************************
-opp_dat opp_decl_particle_dat_txt(opp_set set, int dim, opp_data_type dtype, const char* file_name, char const *name, bool cell_index)
-{
-    std::string type = "";
-    int size = -1;
-    getDatTypeSize(dtype, type, size);
-
-    char* dat_data = (char*)opp_load_from_file_core(file_name, set->size, dim, type.c_str(), size);
-
-    opp_dat dat = opp_decl_particle_dat_core(set, dim, type.c_str(), size, dat_data, name, cell_index);
-
-    opp_host_free(dat_data);
-
-    return dat;
-}
-
-//****************************************
-void opp_increase_particle_count(opp_set particles_set, const int num_particles_to_insert)
-{
-    if (!opp_increase_particle_count_core(particles_set, num_particles_to_insert))
-    {
-        opp_printf("opp_increase_particle_count", "Error: opp_increase_particle_count_core failed for particle set [%s]", particles_set->name);
-        opp_abort("opp_increase_particle_count");        
-    }
-}
-
-//****************************************
-void opp_inc_part_count_with_distribution(opp_set particles_set, int num_particles_to_insert, opp_dat part_dist, bool calc_new)
-{
-    if (OPP_DBG) opp_printf("opp_inc_part_count_with_distribution", "num_particles_to_insert [%d]", num_particles_to_insert);
-
-    if (!opp_inc_part_count_with_distribution_core(particles_set, num_particles_to_insert, part_dist))
-    {
-        opp_printf("opp_inc_part_count_with_distribution", "Error: opp_inc_part_count_with_distribution_core failed for particle set [%s]", particles_set->name);
-        opp_abort("opp_inc_part_count_with_distribution_core");        
-    }
-}
-
-//****************************************
-void opp_reset_num_particles_to_insert(opp_set set) // unused
-{
-    opp_reset_num_particles_to_insert_core(set);
-}
-
-//****************************************
-void opp_particle_sort(opp_set set) // unused
-{ 
-    opp_particle_sort_core(set);
-}
-
-//****************************************
-void opp_print_dat_to_txtfile(opp_dat dat, const char *file_name_prefix, const char *file_name_suffix)
-{
-    std::string prefix = std::string(file_name_prefix) + "_r" + std::to_string(OPP_rank) + "_m" + std::to_string(OPP_comm_size);
-    opp_print_dat_to_txtfile_core(dat, prefix.c_str(), file_name_suffix);
-}
-
-//****************************************
-void opp_print_map_to_txtfile(opp_map map, const char *file_name_prefix, const char *file_name_suffix)
-{
-    std::string prefix = std::string(file_name_prefix) + "_r" + std::to_string(OPP_rank) + "_m" + std::to_string(OPP_comm_size);
-    opp_print_map_to_txtfile_core(map, prefix.c_str(), file_name_suffix);
-}
-
-//****************************************
-void opp_init_particle_move(opp_set set, int nargs, opp_arg *args)
-{ 
-
-    opp_init_particle_move_core(set);
-
-    opp_move_part_indices.clear();
-    opp_move_part_indices.reserve(20000);
-
-    if (OPP_comm_iteration == 0)
-    {
-        OPP_iter_start = 0;
-        OPP_iter_end   = set->size;          
-    }
-    else
-    {
-        // need to change the arg data since particle communication could change the pointer in realloc dat->data
-        for (int i = 0; i < nargs; i++)
-        {
-            if (args[i].argtype == OPP_ARG_DAT && args[i].dat->set->is_particle)
-            {
-                args[i].data = args[i].dat->data;
-                if (OPP_DBG) opp_printf("SSSS", "dat %s", args[i].dat->name);
-            }
-        }
-    }
-
-    OPP_mesh_relation_data = ((int *)set->mesh_relation_dat->data); 
-}
-
-//****************************************
-bool opp_finalize_particle_move(opp_set set)
-{ 
-
-    if (OPP_DBG) opp_printf("opp_finalize_particle_move", "Start particle set [%s]", set->name);
-
-    opp_profiler->start("Mv_Finalize");
-
-    opp_process_marked_particles(set); 
-
-    opp_part_pack(set);
-    
-    // send the counts and send the particles  
-    opp_part_exchange(set);  
-
-    // Can fill the holes here, since the communicated particles will be added at the end
-    opp_finalize_particle_move_core(set);
-
-    if (OPP_auto_sort == 1)
-    {
-        if (OPP_DBG) opp_printf("opp_finalize_particle_move", "auto sorting particle set [%s]", set->name);
-        opp_particle_sort(set);
-    }
-
-    if (opp_part_check_all_done(set))
-    {
-        if (OPP_max_comm_iteration < OPP_comm_iteration)
-            OPP_max_comm_iteration = OPP_comm_iteration;
-
-        OPP_comm_iteration = 0; // reset for the next par loop
-        
-        opp_profiler->end("Mv_Finalize");
-
-        return false; // all mpi ranks do not have anything to communicate to any rank
-    }
-        
-    opp_part_wait_all(set); // wait till all the particles are communicated
-    
-    // increase the particle count if required and unpack the communicated particle buffer 
-    // in to separate particle dats
-    opp_part_unpack(set);
-
-    // cleanSendRecvBuffers(set);
-
-    OPP_iter_start = set->size - set->diff;
-    OPP_iter_end   = set->size;  
-
-    OPP_comm_iteration++;  
-
-    opp_profiler->end("Mv_Finalize");
-
-    return true;
-}
-
-//****************************************
-void opp_reset_dat_impl(opp_dat dat, char* val, opp_reset reset)
-{
-    if (!val)
-    {
-        opp_printf("opp_reset_dat_impl", "Error: val is NULL");
-        return;
-    }
-
-    int start = -1;
-    int end = -1;
-
-    opp_get_start_end(dat->set, reset, start, end);
-
-    for (int i = start; i < end; i++)
-    {
-        memcpy(dat->data + i * dat->size, val, dat->size);
-    }
-
-    // TODO : Check whether this is OK for all the reset options!
-    dat->dirtybit = 0;
-}
-
-//*******************************************************************************
 void opp_partition(std::string lib_name, opp_set prime_set, opp_map prime_map, opp_dat data)
 {
     opp_profiler->start("opp_partition");
@@ -475,10 +254,47 @@ void opp_partition(std::string lib_name, opp_set prime_set, opp_map prime_map, o
     opp_profiler->end("opp_partition");
 }
 
+//****************************************
+void opp_reset_dat_impl(opp_dat dat, char* val, opp_reset reset)
+{
+    if (!val) {
+        opp_printf("opp_reset_dat_impl", "Error: val is NULL");
+        return;
+    }
+
+    int start = -1;
+    int end = -1;
+
+    opp_get_start_end(dat->set, reset, start, end);
+
+    for (size_t i = (size_t)start; i < (size_t)end; i++) {
+        memcpy(dat->data + i * dat->size, val, dat->size);
+    }
+
+    // TODO : Check whether this is OK for all the reset options!
+    dat->dirtybit = 0;
+}
+
+//****************************************
+void opp_print_dat_to_txtfile(opp_dat dat, const char *file_name_prefix, const char *file_name_suffix)
+{
+    std::string prefix = std::string(file_name_prefix) + "_mpi" + std::to_string(OPP_rank);
+    opp_print_dat_to_txtfile_core(dat, prefix.c_str(), file_name_suffix);
+}
+
+//****************************************
+void opp_print_map_to_txtfile(opp_map map, const char *file_name_prefix, const char *file_name_suffix)
+{
+    std::string prefix = std::string(file_name_prefix) + "_mpi" + std::to_string(OPP_rank);
+    opp_print_map_to_txtfile_core(map, prefix.c_str(), file_name_suffix);
+}
+
 //*******************************************************************************
 void opp_mpi_print_dat_to_txtfile(opp_dat dat, const char *file_name) 
 {
-    const std::string prefixed_file_name = std::string("mpi_files/MPI_") + std::to_string(OPP_comm_size) + std::string("_") + file_name;
+    const std::string prefixed_file_name = std::string("mpi_files/MPI_") + 
+                std::to_string(OPP_comm_size) + std::string("_iter") + 
+                std::to_string(OPP_main_loop_iter) + std::string("_") + file_name;
     // rearrange data back to original order in mpi
     opp_dat temp = opp_mpi_get_data(dat);
     
@@ -487,21 +303,6 @@ void opp_mpi_print_dat_to_txtfile(opp_dat dat, const char *file_name)
     opp_host_free(temp->data);
     opp_host_free(temp->set);
     opp_host_free(temp);
-}
-
-//*******************************************************************************
-opp_move_var opp_get_move_var(int thread)
-{
-    // no perf improvement by using a buffered move var, could create a new here instead
-    
-    move_var.move_status = OPP_MOVE_DONE;
-
-    if (OPP_comm_iteration != 0) // TRUE means communicated particles, no need to do the iteration one calculations
-        move_var.iteration_one = false;
-    else
-        move_var.iteration_one = true;
-
-    return move_var; // passing the object for now :(
 }
 
 //*******************************************************************************
@@ -516,43 +317,15 @@ opp_dat opp_fetch_data(opp_dat dat) {
 }
 
 //*******************************************************************************
-// Copy a dat from host to device
-void opp_upload_dat(opp_dat dat) {}
-
-//*******************************************************************************
-// Copy a dat from device to host
-void opp_download_dat(opp_dat dat) {}
-
-//*******************************************************************************
-// Copy all dats of the set from device to host
-void opp_download_particle_set(opp_set particles_set, bool force_download) {}
-
-//*******************************************************************************
-// Copy all dats of the set from host to device
-void opp_upload_particle_set(opp_set particles_set, bool realloc) {}
-
-//*******************************************************************************
 void opp_colour_cartesian_mesh(const int ndim, std::vector<int> cell_counts, opp_dat cell_index, 
                             const opp_dat cell_colors, const int cell_ghosts) 
 {  
     __opp_colour_cartesian_mesh(ndim, cell_counts, cell_index, cell_colors, cell_ghosts);
 }
 
-
 //*******************************************************************************
-void* opp_host_malloc(size_t size)
-{
-    return malloc(size);
-}
-
-//*******************************************************************************
-void* opp_host_realloc(void* ptr, size_t new_size)
-{
-    return realloc(ptr, new_size);
-}
-
-//*******************************************************************************
-void opp_host_free(void* ptr)
-{
-    free(ptr);
-}
+// Below API only for GPU backends
+void opp_upload_dat(opp_dat dat) {}
+void opp_download_dat(opp_dat dat) {}
+void opp_download_particle_set(opp_set particles_set, bool force_download) {}
+void opp_upload_particle_set(opp_set particles_set, bool realloc) {}

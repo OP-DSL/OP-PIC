@@ -1,0 +1,40 @@
+# Simulation parameters
+INT num_steps = 500
+REAL init_vel = 0.0866025403784439
+INT num_part_per_cell = 1500
+INT nx = 40
+INT ny = 40
+INT nz = 60
+REAL c = 1.0
+REAL qsp = -1.0
+REAL me = 1.0
+REAL default_grid_len = 1.0
+REAL eps = 1.0
+STRING part_enrich = two_stream
+BOOL print_energy = true
+# block pencil cart
+STRING cluster = block
+
+# System parameters
+BOOL opp_auto_sort          = false
+REAL opp_allocation_multiple = 1.1
+INT opp_threads_per_block   = 512
+BOOL opp_profile_all        = false
+BOOL print_final   = true
+INT opp_gpu_direct = 0
+
+# HoleFill_All Sort_All Shuffle_All Sort_Periodic Shuffle_Periodic
+STRING opp_fill = HoleFill_All
+INT opp_fill_period = 4
+
+BOOL opp_global_move = false
+BOOL opp_segmented_red = false
+INT gpu_reduction_arrays = 16
+
+STRING hdf_filename = /home/zl/phd/neso_test/OP-PIC_Configs/cabana/mesh_files/cab_48000.hdf5
+INT domain_expansion = 1
+
+# 1 0 0 is the CabanaPIC original configuration
+REAL velX_mult_const = 1
+REAL velY_mult_const = 0.00
+REAL velZ_mult_const = 0.00

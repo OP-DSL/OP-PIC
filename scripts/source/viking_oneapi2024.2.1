@@ -1,0 +1,46 @@
+#!/bin/bash
+
+module purge
+
+export OPP=$HOME/phd/OP-PIC
+export OPP_INSTALL_PATH=$OPP/opp_install
+export OPP_TRANSLATOR=$OPP/opp_translator/translator
+export OPP_PATH=$OPP/opp_lib
+
+export CC_COMPILER=icpx
+export MPI_COMPILER=mpicxx
+
+export MPICH_CXX=$(spack location -i intel-oneapi-compilers@2024.2.1/u6yh7tw5ia)/compiler/2024.2/bin/icpx
+export MPICH_CC=$(spack location -i intel-oneapi-compilers@2024.2.1/u6yh7tw5ia)/compiler/2024.2/bin/icx
+spack load intel-oneapi-dpct@2024.2.1
+
+export CPPFLAGS_ADD="-fp-model precise"
+
+module load CUDA/12.2.2
+
+# For H100
+export NVCCFLAGS_ADD='-gencode arch=compute_90,code=sm_90'
+export CUDA_ARCH=90
+export SYCLFLAGS_ADD="-fp-model precise -fsycl-targets=nvptx64-nvidia-cuda -Xsycl-target-backend=nvptx64-nvidia-cuda --cuda-gpu-arch=sm_90 "
+
+# For A40
+# export NVCCFLAGS_ADD='-gencode arch=compute_86,code=sm_86'
+# export CUDA_ARCH=86
+# export SYCLFLAGS_ADD="-fp-model precise -fsycl-targets=nvptx64-nvidia-cuda -Xsycl-target-backend=nvptx64-nvidia-cuda --cuda-gpu-arch=sm_86 "
+
+. /users/ghh518/lib_setup/spack/opt/spack/linux-rocky8-zen3/gcc-12.2.0/intel-oneapi-compilers-2024.2.1-u6yh7tw5ia2qtbuttjd3vmesvth3bcbq/setvars.sh --include-intel-llvm
+ 
+
+# cd phd/lib_setup
+# git clone -c feature.manyFiles=true --depth=2 https://github.com/spack/spack.git
+# . spack/share/spack/setup-env.sh
+# spack --version
+# # Load gcc if another version is required --------
+# spack compiler find
+# spack install intel-oneapi-compilers@2024.2.1
+# spack load intel-oneapi-dpct@2024.2.1
+# spack compiler find
+# spack unload intel-oneapi-dpct@2024.2.1
+# # install cuda plugin! https://developer.codeplay.com/products/oneapi/nvidia/2025.0.0/guides/get-started-guide-nvidia --------
+# sh oneapi-for-nvidia-gpus-2024.2.1-cuda-12.0-linux.sh --install-dir /users/ghh518/lib_setup/spack/opt/spack/linux-rocky8-zen3/gcc-12.2.0/intel-oneapi-compilers-2024.2.1-u6yh7tw5ia2qtbuttjd3vmesvth3bcbq
+# spack install intel-oneapi-dpct@2024.2.1

@@ -37,18 +37,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "opp_lib.h"
 
 opp_set opp_decl_set_hdf5(char const *file, char const *name);
-opp_map opp_decl_map_hdf5(opp_set from, opp_set to, int dim, char const *file, char const *name);
-opp_dat opp_decl_dat_hdf5(opp_set set, int dim, opp_data_type dtype, char const *file, char const *name, 
-                                bool cell_index = false);
-
 opp_set opp_decl_particle_set_hdf5(char const *file, char const *name, opp_set cells_set);
-// opp_dat opp_decl_part_dat_hdf5(opp_set set, int dim, opp_data_type dtype, char const *file, char const *name, 
-//                                 bool cell_index = false);
+
+opp_map opp_decl_map_hdf5(opp_set from, opp_set to, int dim, char const *file, char const *name);
+opp_dat opp_decl_dat_hdf5(opp_set set, int dim, opp_data_type dtype, char const *file, char const *name);
 
 void opp_get_const_hdf5(char const *name, int dim, char const *type, char *const_data, char const *file_name);
 
 void opp_dump_to_hdf5(char const *file_name);
-// void opp_write_const_hdf5(char const *name, int dim, char const *type, char *const_data, char const *file_name);
 
 void opp_fetch_data_hdf5_file(opp_dat dat, char const *file_name);
 void opp_fetch_data_hdf5_file_path(opp_dat dat, char const *file_name, char const *path_name);

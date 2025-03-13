@@ -1,0 +1,670 @@
+{% extends "cpp/loop_host.hpp.jinja" %}
+
+{% block kernel %}
+
+namespace opp_k{{kernel_idx}} {
+{% if lh.dh_loop_required %}
+
+namespace host {
+{{host_kernel_func}}
+}
+{% endif %}
+{% endblock %}
+
+{% macro stride_dev(arg) -%}
+{{-" * opp_k%s_dat%s_stride_sycl[0]" % (kernel_idx, arg.dat_id) if lh.dat(arg) is soa-}}
+{%- endmacro %}
+
+{% macro opt_cond(arg) %}
+    {%- if arg is opt -%}arg{{arg.id}}.opt{%- endif -%}
+{% endmacro %}
+
+{% macro opt_cond_comp(arg) %}
+    {%- if arg is opt -%}{{opt_cond(arg)}} && {% endif -%}
+{% endmacro %}
+
+{% macro opt_tern(arg, alt = "NULL") %}
+    {%- if arg is opt -%}{{opt_cond(arg)}} ? {{caller()}} : {{alt}}{%- else -%}{{caller()}}{%- endif -%}
+{% endmacro %}
+
+{% macro opt_if(arg) %}
+    {% if arg is opt %}
+    if ({{opt_cond(arg)}}) {
+    {{caller()|indent-}}
+    {{"}"|indent(first = true)}}
+    {% else %}
+{{caller()-}}
+    {% endif %}
+{% endmacro %}
+
+{% macro opt_cuda_cond(arg) %}
+    {%- if arg is opt -%}optflags & 1 << {{lh.optIdx(arg)}}{%- endif -%}
+{% endmacro %}
+
+{% macro opt_cuda_cond_comp(arg) %}
+    {%- if arg is opt -%}{{opt_cuda_cond(arg)}} && {% endif -%}
+{% endmacro %}
+
+{% macro opt_cuda_tern(arg, alt = "NULL") %}
+    {%- if arg is opt -%}{{opt_cuda_cond(arg)}} ? {{caller()}} : {{alt}}{%- else -%}{{caller()}}{%- endif -%}
+{% endmacro %}
+
+{% macro opt_cuda_if(arg) %}
+    {% if arg is opt %}
+    if ({{opt_cuda_cond(arg)}}) {
+    {{caller()|indent-}}
+    {{"}"|indent(first = true)}}
+    {% else %}
+{{caller()-}}
+    {% endif %}
+{% endmacro %}
+
+{% macro map_lookup(arg, kernel_idx = '') -%}
+{%- if arg is double_indirect -%}
+map{{arg.map_id}}_sycl[opp_k{{kernel_idx}}_map{{lh.map(arg).id}}_stride_sycl[0] * {{arg.map_idx}} + p2c]
+    {{-(" * %d" % lh.dat(arg).dim) if lh.dat(arg) is not soa}}
+{%- elif arg is p2c_mapped -%}
+p2c
+    {{-(" * %d" % lh.dat(arg).dim) if lh.dat(arg) is not soa}}
+{%- else -%}
+map{{arg.map_id}}_sycl[opp_k{{kernel_idx}}_map{{lh.map(arg).id}}_stride_sycl[0] * {{arg.map_idx}} + n]
+    {{-(" * %d" % lh.dat(arg).dim) if lh.dat(arg) is not soa}}
+{%- endif -%}    
+{%- endmacro %}
+
+{% macro arg_to_pointer_cuda(arg) -%}
+
+    {%- if arg is gbl %}
+        {% if arg is reduction %}
+gbl{{arg.id}}_local
+        {%- else -%}
+        {%- set cast = arg.typ -%}
+gbl{{arg.id}}_sycl
+        {%- endif -%}
+    {%- else -%}
+        {%- set cast = lh.dat(arg).typ -%}
+        
+        {%- if arg is direct -%}
+            {%- if lh is injected_loop -%}
+            {%- set offset = " + (inj_start + n)" -%}
+            {%- else -%}
+            {%- set offset = " + n" -%}
+            {%- endif -%}
+            dat{{lh.dat(arg).id}}_sycl{{offset}}
+        {%- else -%}
+            {%- if arg is reduction -%}
+                {%- if arg is p2c_mapped and not double_indirect -%}
+            arg{{arg.id}}_p2c_local
+                {%- else -%}
+            arg{{arg.id}}_{{arg.map_idx}}_local
+                {%- endif -%}
+            {%- else -%}
+                {%- if arg is double_indirect -%}
+            {%- set offset = " + map%s[p2c + opp_k%d_map%d_stride_sycl[0] * %d]" % (arg.map_id, kernel_idx, arg.map_id, arg.map_idx) -%}
+                {%- elif arg is p2c_mapped -%}
+            {%- set offset = " + p2c" -%}
+                {%- elif arg is indirect -%}
+            {%- set offset = " + map%s[n + opp_k%d_map%d_stride_sycl[0] * %d]" % (arg.map_id, kernel_idx, lh.map(arg).id, arg.map_idx) -%}
+                {%- endif -%}
+                dat{{lh.dat(arg).id}}_sycl{{offset}}
+            {%- endif -%}
+        {%- endif -%}         
+    {%- endif -%}
+{%- endmacro %}
+
+{%- macro arg_to_pointer_dh(arg, lh) %}
+    {%- if arg.id == 0 -%}
+            (const OPP_REAL*)&point,
+    {%- elif arg is gbl %}
+        {%- set cast = arg.typ -%}
+        ({{cast}} *)args[{{arg.id}}].data{%-if arg.id+1 != lh.args|length-%},{%-endif-%}
+    {%- else -%}
+
+        {%- if arg is direct -%}
+            {%- set offset = "" -%}
+        {%- elif arg is double_indirect -%}
+            {%- set offset = " + (map%s[%d] * %d)" % (arg.map_id, arg.map_idx, lh.dat(arg).dim) -%}
+        {%- elif arg is indirect -%}
+            {%- set offset = " + (temp_ci * %d)" % (lh.dat(arg).dim) -%}
+        {%- endif -%}
+
+        {# 0 is OP.AccessType.READ #}
+        {%- if arg.access_type.value == 0 -%} 
+            (const {{lh.dat(arg).typ}} *)args[{{arg.id}}].data{{offset}}{%-if arg.id+1 != lh.args|length-%},{%-endif%} // {% if arg is dat -%}{{lh.dat(arg).ptr}} {%- endif -%} | OPP_{{arg.access_type.name}}
+        {%- else -%}
+            arg{{arg.id}}_temp{%-if arg.id+1 != lh.args|length-%},{%-endif%} // {% if arg is dat -%}{{lh.dat(arg).ptr}} {%- endif -%} | OPP_{{arg.access_type.name}}
+        {%- endif -%}
+    {%- endif -%}
+{%- endmacro -%}
+
+{% block prologue %}
+{{super()}}
+    {% for dat in lh.dats|soa %}
+OPP_INT opp_k{{kernel_idx}}_dat{{dat.id}}_stride = -1;
+    {% endfor %}
+    {% for map in lh.maps %}
+OPP_INT opp_k{{kernel_idx}}_map{{map.id}}_stride = -1;
+    {% endfor %}
+OPP_INT opp_k{{kernel_idx}}_c2c_map_stride = -1;
+
+    {% for dat in lh.dats|soa %}
+OPP_INT* opp_k{{kernel_idx}}_dat{{dat.id}}_stride_s = nullptr;
+    {% endfor %}
+    {% for map in lh.maps %}
+OPP_INT* opp_k{{kernel_idx}}_map{{map.id}}_stride_s = nullptr;
+    {% endfor %}
+OPP_INT* opp_k{{kernel_idx}}_c2c_map_stride_s = nullptr;
+{% endblock %}
+
+{% block kernel_wrapper %}
+
+void opp_dev_move_kernel_sycl(opp_set set, const int nargs, opp_arg *args, opp_map p2c_map, opp_map c2c_map) {
+
+    opp_set_stride(OPP_comm_iteration_d, OPP_comm_iteration_h, OPP_comm_iteration);
+    {% for dat in lh.dats|soa %}
+    opp_set_stride(opp_k{{kernel_idx}}_dat{{dat.id}}_stride_s, opp_k{{kernel_idx}}_dat{{dat.id}}_stride, args[{{dat.arg_id}}].dat->set->set_capacity);
+    {% endfor %}
+    {% for map in lh.maps %}
+    opp_set_stride(opp_k{{kernel_idx}}_map{{map.id}}_stride_s, opp_k{{kernel_idx}}_map{{map.id}}_stride, args[{{map.arg_id}}].size);
+    {% endfor %}
+
+#ifdef OPP_BLOCK_SIZE_{{kernel_idx}}
+    const int block_size = OPP_BLOCK_SIZE_{{kernel_idx}};
+#else
+    const int block_size = OPP_gpu_threads_per_block;
+#endif
+    
+    const int num_blocks = (OPP_iter_end - OPP_iter_start - 1) / block_size + 1;
+
+    opp_profiler->start("move_kernel_only");
+
+    opp_queue->submit([&](sycl::handler &cgh) {
+        
+        const OPP_INT* comm_iteration = OPP_comm_iteration_d;
+        const OPP_INT* cell_set_size = OPP_cells_set_size_d;
+    {% if lh.args|dat|indirect|reduction|length > 0 and lh is particle_loop %}
+
+        const int array_count = opp_params->get<OPP_INT>("gpu_reduction_arrays");
+    {% endif %}
+
+        OPP_INT *remove_count = (OPP_INT *)set->particle_remove_count_d;
+        OPP_INT *remove_part_indices = (OPP_INT *)OPP_remove_particle_indices_d;
+        OPP_INT *move_part_indices = (OPP_INT *)OPP_move_particle_indices_d;
+        OPP_INT *move_cell_indices = (OPP_INT *)OPP_move_cell_indices_d;
+        OPP_INT *move_count = (OPP_INT *)OPP_move_count_d;
+
+        const OPP_INT* opp_k{{kernel_idx}}_c2c_map_stride_sycl = opp_k{{kernel_idx}}_c2c_map_stride_s;
+    {% for dat in lh.dats|soa %}
+        const OPP_INT* opp_k{{kernel_idx}}_dat{{dat.id}}_stride_sycl = opp_k{{kernel_idx}}_dat{{dat.id}}_stride_s;
+    {% endfor %}
+    {% for map in lh.maps %}
+        const OPP_INT* opp_k{{kernel_idx}}_map{{map.id}}_stride_sycl = opp_k{{kernel_idx}}_map{{map.id}}_stride_s;
+    {% endfor %}
+
+    {% for consts in lh.consts %}
+        const {{consts.typ}}* {{consts.ptr}}_sycl = {{consts.ptr}}_s;
+    {% endfor %}
+
+    {% for dat in lh.dats %}
+        {% if dat is indirect_reduction(lh) and lh is particle_loop %}
+        {{dat.typ}}** dat{{dat.id}}_sycl = ({{dat.typ}}**)args[{{dat.arg_id}}].dat->thread_data_d;     // {{dat.ptr}}
+        {% else %}
+        {{dat.typ}}* dat{{dat.id}}_sycl = ({{dat.typ}}*)args[{{dat.arg_id}}].data_d;     // {{dat.ptr}}
+        {% endif %}
+    {% endfor %}
+    {% for map in lh.maps %}
+        const OPP_INT* map{{map.id}}_sycl = args[{{map.arg_id}}].map_data_d;     // {{map.ptr}}
+    {% endfor %}        
+        OPP_INT *p2c_map_sycl = (OPP_INT *)p2c_map->p2c_dat->data_d;
+        const OPP_INT *c2c_map_sycl = (OPP_INT *)c2c_map->map_d; 
+
+        const OPP_INT iter_start = OPP_iter_start;
+        const OPP_INT iter_end = OPP_iter_end; 
+    {% for arg in lh.args|gbl %}
+        {{arg.typ}}* gbl{{arg.id}}_sycl = ({{arg.typ}}*)args[{{arg.id}}].data_d;
+        {% if arg is reduction %}
+        sycl::accessor<{{arg.typ}}, 1, sycl::access::mode::read_write, sycl::access::target::local>
+                                    red_{{arg.typ}}_{{arg.id}}(block_size, cgh); // temp var for reduction
+        {% endif %}
+    {% endfor %}
+
+        // user provided elemental kernel
+        // -----------------------------------------------------------------------------------------
+        {{kernel_func|indent(8)}}
+
+        // -----------------------------------------------------------------------------------------
+        {{kernel_call()|indent(8)}}
+
+        // -----------------------------------------------------------------------------------------
+        cgh.parallel_for<class opp_particle_move>(
+                sycl::nd_range<1>(block_size * num_blocks, block_size), opp_move_kernel);
+    });
+
+    OPP_DEVICE_SYNCHRONIZE();
+
+    opp_profiler->end("move_kernel_only");
+}
+} // end of namespace
+
+{% endblock %}
+
+{% block host_prologue_early_exit_cleanup %}
+        opp_set_dirtybit_grouped(nargs, args, Device_GPU);
+        OPP_DEVICE_SYNCHRONIZE();
+{% endblock %}
+
+{% block host_prologue %}
+//--------------------------------------------------------------
+void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_map,
+    {% for arg in lh.args %}
+    opp_arg arg{{arg.id}}{{"," if not loop.last}}   // {% if arg is dat %}{{lh.dat(arg).ptr}} {% endif -%} | OPP_{{arg.access_type.name}}
+    {% endfor %}
+) 
+{ OPP_RETURN_IF_INVALID_PROCESS;
+
+    if (OPP_DBG) opp_printf("APP", "opp_particle_move__{{lh.kernel}} set_size %d", set->size);
+
+    opp_profiler->start("{{lh.kernel}}");
+
+    const int nargs = {{lh.args|length + 1}};
+    opp_arg args[nargs];
+
+    {% for arg in lh.args %}
+    args[{{loop.index0}}] = {{arg_dat_redef(arg) if lh.args[arg.id] is vec else "arg%d" % arg.id}};
+    {% endfor %}
+    args[{{lh.args|length}}] = opp_arg_dat(p2c_map->p2c_dat, OPP_RW); // required to make dirty or should manually make it dirty
+
+    opp_mpi_halo_exchanges_grouped(set, nargs, args, Device_GPU);
+    {% if lh is double_indirect_reduc %}
+
+#ifdef USE_MPI
+    opp_init_double_indirect_reductions_device(nargs, args);
+#endif
+    {% endif %} 
+    const OPP_INT c2c_stride = c2c_map->from->size + c2c_map->from->exec_size + c2c_map->from->nonexec_size;
+
+    opp_set_stride(OPP_cells_set_size_d, OPP_cells_set_size, set->cells_set->size);
+    opp_set_stride(opp_k{{kernel_idx}}_c2c_map_stride_s, opp_k{{kernel_idx}}_c2c_map_stride, c2c_stride);
+
+    opp_mpi_halo_wait_all(nargs, args);
+    {% for arg in lh.args|gbl %}
+    {{arg.typ}} *arg{{arg.id}}_host_data = ({{arg.typ}} *)args[{{arg.id}}].data;{{"\n" if loop.last}}
+    {% endfor %}
+    {% if lh.args|gbl|read_or_write|length > 0 %}
+    int const_bytes = 0;
+
+        {% for arg in lh.args|gbl|read_or_write %}
+            {% call opt_if(arg) %}
+    const_bytes += ROUND_UP({{arg.dim}} * sizeof({{arg.typ}}));
+            {% endcall %}
+        {% endfor %}
+
+    opp_reallocConstArrays(const_bytes);
+    const_bytes = 0;
+
+        {% for arg in lh.args|gbl|read_or_write %}
+            {% call opt_if(arg) %}
+    args[{{arg.id}}].data   = OPP_consts_h + const_bytes;
+    args[{{arg.id}}].data_d = OPP_consts_d + const_bytes;
+
+    for (int d = 0; d < {{arg.dim}}; ++d)
+        (({{arg.typ}} *)args[{{arg.id}}].data)[d] = arg{{arg.id}}_host_data[d];
+
+    const_bytes += ROUND_UP({{arg.dim}} * sizeof({{arg.typ}}));
+            {% endcall %}
+
+        {% endfor %}
+    opp_mvConstArraysToDevice(const_bytes);
+
+    {% endif %}
+    {% if lh.args|gbl|reduction|length > 0 %}
+
+        int max_blocks = num_blocks;
+
+        int reduction_bytes = 0;
+        int reduction_size = 0;
+
+        {% for arg in lh.args|gbl|reduction %}
+            {% call opt_if(arg) %}
+        reduction_bytes += ROUND_UP(max_blocks * {{arg.dim}} * sizeof({{arg.typ}}));
+        reduction_size   = MAX(reduction_size, sizeof({{arg.typ}}));
+            {% endcall %}
+        {% endfor %}
+
+        opp_reallocReductArrays(reduction_bytes);
+        reduction_bytes = 0;
+
+        {% for arg in lh.args|gbl|reduction %}
+            {% call opt_if(arg) %}
+        args[{{arg.id}}].data   = OPP_reduct_h + reduction_bytes;
+        args[{{arg.id}}].data_d = OPP_reduct_d + reduction_bytes;
+        {#const OPP_INT arg{{arg.id}}_offset = reduction_bytes / sizeof({{arg.typ}});#}
+
+        for (int b = 0; b < max_blocks; ++b) {
+            for (int d = 0; d < {{arg.dim}}; ++d)
+                (({{arg.typ}} *)args[{{arg.id}}].data)[b * {{arg.dim}} + d] = {% if arg.access_type == OP.AccessType.INC -%}
+                    {{arg.typ}}_ZERO
+                {%- else -%}
+                    arg{{arg.id}}_host_data[d]
+                {%- endif %};
+        }
+
+        reduction_bytes += ROUND_UP(max_blocks * {{arg.dim}} * sizeof({{arg.typ}}));
+            {% endcall %}
+        {% endfor %}
+
+        opp_mvReductArraysToDevice(reduction_bytes);
+    {% endif %}
+
+    opp_init_particle_move(set, nargs, args);
+
+{% endblock %}
+
+{% macro kernel_call() %}
+auto opp_move_kernel = [=](sycl::nd_item<1> item) {
+    
+    const int tid = item.get_global_linear_id();
+    const int n = tid + iter_start;
+
+    {% for arg in lh.args|gbl|reduction %}
+    {{arg.typ}} gbl{{arg.id}}_local[{{arg.dim}}];
+    for (int d = 0; {{opt_cuda_cond_comp(arg)}}d < {{arg.dim}}; ++d)
+        gbl{{arg.id}}_local[d] = {% if arg is inc -%}
+            {{arg.typ}}_ZERO
+        {%- else -%}
+            gbl{{arg.id}}_sycl[item.get_group(0) * {{arg.dim}} + d]
+        {%- endif -%};
+
+    {% endfor %}
+    if (n < iter_end) {
+        OPP_INT *opp_p2c = (p2c_map_sycl + n);
+        if (opp_p2c[0] == MAX_CELL_INDEX) {
+            return;
+        }
+        
+        char move_flag = OPP_NEED_MOVE;
+        bool iter_one_flag = (comm_iteration[0] > 0) ? false : true;
+
+    {% for arg in lh.args_expanded|dat|indirect|reduction if config.atomics %}
+        {% if arg is p2c_mapped and not double_indirect %}
+        {{lh.dat(arg).typ}} arg{{arg.id}}_p2c_local[{{lh.dat(arg).dim}}];
+        {% else %}
+        {{lh.dat(arg).typ}} arg{{arg.id}}_{{arg.map_idx}}_local[{{lh.dat(arg).dim}}];
+        {% endif %}
+    {% endfor %}
+    {% for dat in lh.dats if config.atomics and lh is particle_loop %}
+        {% if dat is indirect_reduction(lh) %}
+        {{dat.typ}}* tmp{{dat.id}}_sycl = dat{{dat.id}}_sycl[item.get_local_id(0) % array_count];
+
+        {% endif %}
+    {% endfor %}
+        do {
+            const OPP_INT p2c = opp_p2c[0];
+            const OPP_INT* opp_c2c = c2c_map_sycl + p2c;
+
+        {% for arg in lh.args_expanded|dat|indirect|reduction if config.atomics %}
+            for (int d = 0; {{opt_cuda_cond_comp(arg)}}d < {{lh.dat(arg).dim}}; ++d)
+            {% if arg is p2c_mapped and not double_indirect %}
+                arg{{arg.id}}_p2c_local[d] = {{lh.dat(arg).typ}}_ZERO;
+            {% else %}
+                arg{{arg.id}}_{{arg.map_idx}}_local[d] = {{lh.dat(arg).typ}}_ZERO;
+            {% endif %}
+
+        {% endfor %}
+            {{lh.kernel}}_sycl(
+                move_flag, iter_one_flag, opp_c2c, opp_p2c,
+    {% for arg in lh.args %}
+                {%+ call opt_cuda_tern(arg) %}{{arg_to_pointer_cuda(arg)}}{% endcall %}{{"," if not loop.last}} // {% if arg is dat %}{{lh.dat(arg).ptr}} {% endif +%}
+    {% endfor %} 
+            ); 
+        {% if lh is particle_loop and config.atomics %}
+        {% set dat_name = "tmp" -%}
+        {% else %}
+        {% set dat_name = "dat" -%}
+        {% endif %}
+        {% for arg in lh.args_expanded|dat|indirect|reduction if config.atomics %}
+            
+            for (int d = 0; {{opt_cuda_cond_comp(arg)}}d < {{lh.dat(arg).dim}}; ++d)
+            {% if arg is p2c_mapped and not double_indirect %}
+                opp_atomic_fetch_add({{dat_name}}{{arg.dat_id}}_sycl + {{map_lookup(arg, kernel_idx)}} + (d{{stride_dev(arg)}}), arg{{arg.id}}_p2c_local[d]);
+            {% else %}
+                opp_atomic_fetch_add({{dat_name}}{{arg.dat_id}}_sycl + {{map_lookup(arg, kernel_idx)}} + (d{{stride_dev(arg)}}), arg{{arg.id}}_{{arg.map_idx}}_local[d]); // TODO: this looks incorrect
+            {% endif %}        
+        {% endfor %}    
+        } while (opp_part_check_status_device(move_flag, iter_one_flag, opp_p2c, n, 
+                    remove_count, remove_part_indices, 
+                    move_part_indices, move_cell_indices, move_count, cell_set_size));
+    }        
+    {% for arg in lh.args|gbl|reduction %}
+
+    for (int d = 0; {{opt_dev_cond_comp(arg)}}d < {{arg.dim}}; ++d) // arg{{arg.id}}_offset + 
+        opp_reduction<OPP_{{arg.access_type.name}}, 0>(gbl{{arg.id}}_sycl, (d + item.get_group_linear_id() * {{arg.dim}}), 
+                        gbl{{arg.id}}_local[d], red_{{arg.typ}}_{{arg.id}}, item);
+    {% endfor %}
+};
+{%- endmacro %}
+
+{%- macro dh_check_for_global_move() %}
+    if (useGlobalMove) {
+           
+#ifdef USE_MPI         
+        globalMover->initGlobalMove();
+        opp_init_dh_device(set);
+#endif
+        opp_profiler->start("GblMv_Move");
+        // check whether particles need to be moved via the global move routine
+        opp_dev_checkForGlobalMove_sycl(set,
+            (OPP_REAL*)args[0].data_d,    // {{lh.dat(lh.args[0]).ptr}} 
+            (OPP_INT *)args[{{lh.args|length}}].data_d     // p2c_map
+        );
+        opp_profiler->end("GblMv_Move");
+
+#ifdef USE_MPI 
+        opp_gather_dh_move_indices(set);
+        globalMover->communicate(set);
+#endif
+    }
+{%- endmacro %}
+
+{%- macro dh_finalize() %}
+#ifdef USE_MPI 
+    // ----------------------------------------------------------------------------
+    // finalize the global move routine and iterate over newly added particles and check whether they need neighbour comm
+    if (useGlobalMove) { 
+        
+        opp_profiler->start("GblMv_finalize");
+        const int finalized = globalMover->finalize(set);
+        opp_profiler->end("GblMv_finalize");
+
+        if (finalized > 0) {
+            opp_profiler->start("GblMv_AllMv");
+
+            // need to change arg data since particle resize in globalMover::finalize could change the pointer in dat->data 
+            for (int i = 0; i < nargs; i++)
+                if (args[i].argtype == OPP_ARG_DAT && args[i].dat->set->is_particle)
+                    args[i].data_d = args[i].dat->data_d;
+
+            // check whether the new particle is within cell, and if not move between cells within the MPI rank, 
+            // mark for neighbour comm. Do only for the globally moved particles 
+            OPP_iter_start = (set->size - set->diff);
+            OPP_iter_end = set->size;
+            
+            opp_k{{kernel_idx}}::opp_dev_move_kernel_sycl(set, nargs, args, p2c_map, c2c_map); 
+
+            opp_profiler->end("GblMv_AllMv");
+        }
+    }
+#endif
+{%- endmacro %}
+
+{% block host_loop %}
+    {% if lh.dh_loop_required %}
+{{ dh_check_for_global_move() }}
+    {% endif%}
+    {% for dat in lh.dats %}
+        {% if dat is indirect_reduction(lh) and lh is particle_loop %}
+    opp_create_thread_level_data<{{dat.typ}}>(args[{{dat.arg_id}}]);
+        {% endif %}
+    {% endfor %}
+
+    opp_k{{kernel_idx}}::opp_dev_move_kernel_sycl(set, nargs, args, p2c_map, c2c_map);
+    {% if lh.dh_loop_required %}
+
+{{ dh_finalize() }}
+    {% endif%}
+
+    while (opp_finalize_particle_move(set)) {
+        
+        opp_init_particle_move(set, nargs, args);
+
+        opp_k{{kernel_idx}}::opp_dev_move_kernel_sycl(set, nargs, args, p2c_map, c2c_map);
+    }
+    {% for dat in lh.dats %}
+        {% if dat is indirect_reduction(lh) and lh is particle_loop %}
+    opp_reduce_thread_level_data<{{dat.typ}}>(args[{{dat.id}}]);
+        {% endif %}
+    {% endfor %}
+
+{% endblock %}
+
+{% block host_epilogue %}
+    {% if lh.args|gbl|read_write|length > 0 or lh.args|gbl|write|length > 0 %}
+    mvConstArraysToHost(const_bytes);
+    
+        {% for arg in lh.args|gbl if arg is write or arg is read_write %}
+    for (int d = 0; d < {{arg.dim}}; ++d)
+        arg{{arg.id}}_host_data[d]; = (({{arg.typ}} *)args[{{arg.id}}].data)[d];
+        {% endfor %}
+    {% endif %}
+    {% for arg in lh.args|gbl|read_or_write %}
+    args[{{arg.id}}].data = (char *)arg{{arg.id}}_host_data;{{"\n" if loop.last}}
+    {% endfor %}
+    {% for arg in lh.args|gbl|reduction %}
+    for (int b = 0; {{opt_cond_comp(arg)}}b < max_blocks; ++b) {
+        for (int d = 0; d < {{arg.dim}}; ++d)
+        {% if arg.access_type == OP.AccessType.INC %}
+            arg{{arg.id}}_host_data[d] += (({{arg.typ}} *)args[{{arg.id}}].data)[b * {{arg.dim}} + d];
+        {% elif arg.access_type in [OP.AccessType.MIN, OP.AccessType.MAX] %}
+            arg{{arg.id}}_host_data[d] = {{arg.access_type.name-}}
+                (arg{{arg.id}}_host_data[d], (({{arg.typ}} *)args[{{arg.id}}].data)[b * {{arg.dim}} + d]);
+        {% endif %}
+    }
+
+    {% endfor %}
+    {% for arg in lh.args|gbl|reduction %}
+        {% call opt_if(arg) %}
+    args[{{arg.id}}].data = (char *)arg{{arg.id}}_host_data;
+    opp_mpi_reduce(&args[{{arg.id}}], arg{{arg.id}}_host_data);
+        {% endcall %}
+
+    {% endfor %}
+    opp_set_dirtybit_grouped(nargs, args, Device_GPU);
+    OPP_DEVICE_SYNCHRONIZE();
+    {% if lh is double_indirect_reduc %}
+
+#ifdef USE_MPI    
+    opp_exchange_double_indirect_reductions_device(nargs, args);
+    opp_complete_double_indirect_reductions_device(nargs, args);
+#endif
+    {% endif %} 
+{{super()}}
+{% endblock %}
+
+{% block dh_init_wrapper %}
+{% if lh.dh_loop_required %}
+
+void opp_init_direct_hop_cg(double grid_spacing, const opp_dat c_gbl_id, const opp::BoundingBox& b_box, 
+    opp_map c2c_map, opp_map p2c_map,
+    {% for arg in lh.args %}
+    opp_arg arg{{arg.id}}{{"," if not loop.last}} // {% if arg is dat %}{{lh.dat(arg).ptr}} {% endif -%} | OPP_{{arg.access_type.name}}
+    {% endfor %}
+) { OPP_RETURN_IF_INVALID_PROCESS;
+
+    opp_profiler->start("Setup_Mover");
+
+    useGlobalMove = opp_params->get<OPP_BOOL>("opp_global_move");
+
+    if (OPP_DBG) opp_printf("opp_init_direct_hop_cg", "START useGlobalMove=%s", useGlobalMove ? "YES" : "NO");
+
+    if (useGlobalMove) {
+
+        const int nargs = {{lh.args|length + 1}};
+        opp_arg args[nargs];
+
+    {% for arg in lh.args %}
+        args[{{loop.index0}}] = {{arg_dat_redef(arg) if lh.args[arg.id] is vec else "arg%d" % arg.id}};
+    {% endfor %}
+        args[{{lh.args|length}}] = opp_arg_dat(p2c_map->p2c_dat, OPP_RW); // required to make dirty or should manually make it dirty
+
+#ifdef USE_MPI
+        opp_mpi_halo_exchanges_grouped(c_gbl_id->set, nargs, args, Device_CPU);
+
+        comm = std::make_shared<opp::Comm>(OPP_MPI_WORLD);
+        globalMover = std::make_unique<opp::GlobalParticleMover>(comm->comm_parent);
+
+        opp_mpi_halo_wait_all(nargs, args);
+#endif
+
+        boundingBox = std::make_shared<opp::BoundingBox>(b_box);
+        cellMapper = std::make_shared<opp::CellMapper>(boundingBox, grid_spacing, comm);
+        
+        const int c_set_size = c_gbl_id->set->size;
+
+        // lambda function for dh mesh search loop
+        auto all_cell_checker = [&](const opp_point& point, int& cid) {          
+    {% for arg in lh.args|dat %}
+        {% if arg.access_type.value in [1, 3, 4, 5, 2] %} 
+            // we dont want to change the original arrays during dh mesh generation, hence duplicate except OPP_READ
+            {{lh.dat(arg).typ}} arg{{arg.id}}_temp[{{lh.dat(arg).dim}}];
+        {%- endif %}
+    {%- endfor +%}
+            for (int ci = 0; ci < c_set_size; ++ci) {
+                opp_move_status_flag = OPP_NEED_MOVE;  
+                opp_move_hop_iter_one_flag = true;
+                
+                int temp_ci = ci; // we dont want to get iterating ci changed within the kernel, hence get a copy
+                
+                opp_p2c = &(temp_ci);           
+                opp_c2c = &((c2c_map->map)[temp_ci * 4]);
+    {% if lh is indirect %}
+        {% for map in lh.maps %}
+                const OPP_INT *map{{map.id}} = args[{{map.arg_id}}].map_data + (temp_ci * {{map.dim}});
+        {%- endfor %}   
+    {%- endif %}    
+    {%- for arg in lh.args|dat %}
+        {% if arg.access_type.value == 2 %} 
+
+            {%- if arg is double_indirect -%}
+            {%- set offset = " + (map%s[%d] * %d)" % (arg.map_id, arg.map_idx, lh.dat(arg).dim) -%}
+            {%- elif arg is indirect -%}
+            {%- set offset = " + (temp_ci * %d)" % (lh.dat(arg).dim) -%}
+            {%- endif %}
+                // arg{{arg.id}} is OPP_RW, hence get a copy just incase
+                std::memcpy(&arg{{arg.id}}_temp, ({{lh.dat(arg).typ}} *)args[{{arg.id}}].data{{offset}}, (sizeof({{lh.dat(arg).typ}}) * {{lh.dat(arg).dim}}));
+        {% endif %}
+    {%- endfor %}
+
+                opp_k{{kernel_idx}}::host::{{lh.kernel}}(
+    {% for arg in lh.args %}
+                    {{arg_to_pointer_dh(arg,lh)}}
+    {% endfor %}
+                );
+                if (opp_move_status_flag == OPP_MOVE_DONE) {       
+                    cid = temp_ci;
+                    break;
+                }
+            }
+        };
+
+        if (opp_params->get<OPP_BOOL>("opp_dh_data_generate")) {
+            cellMapper->generateStructuredMesh(c_gbl_id->set, c_gbl_id, all_cell_checker);
+        }
+        else {
+            cellMapper->generateStructuredMeshFromFile(c_gbl_id->set, c_gbl_id);  
+        }
+    }
+
+    opp_profiler->end("Setup_Mover");
+}
+{% endif %}
+{% endblock %}

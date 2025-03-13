@@ -2,13 +2,13 @@ import re
 
 from store import Program
 from util import SourceBuffer
-import op as OP
+import opp as OPP
 
-def populate_arg(arg, mlh: OP.Loop) -> str:
+def populate_arg(arg, mlh: OPP.Loop) -> str:
     id1 = ""
     id2 = ""
     id3 = ""
-    if isinstance(arg, OP.ArgDat):
+    if isinstance(arg, OPP.ArgDat):
         if arg.p2c_id is not None:
             id3 = f"{arg.p2c_id}, "
         if arg.map_id is not None:
@@ -16,11 +16,11 @@ def populate_arg(arg, mlh: OP.Loop) -> str:
         if arg.map_idx >= 0:
             id1 = f"{arg.map_idx}, "
         arg_str = f"opp_arg_dat({mlh.dat(arg).ptr}, {id1}{id2}{id3}OPP_{arg.access_type.name})"
-    elif isinstance(arg, OP.ArgGbl):
+    elif isinstance(arg, OPP.ArgGbl):
         arg_str = f'opp_arg_gbl({arg.ptr}, {arg.dim}, "{arg.typ.__repr__()}", OPP_{arg.access_type.name})'
     return arg_str
 
-def get_dh_init_args(move_loop : OP.Loop):
+def get_dh_init_args(move_loop : OPP.Loop):
     if move_loop is None:
         return ""
     dh_args = ", " + move_loop.c2c_map.ptr + ", " + move_loop.p2c_map.ptr + ",\n\t\t\t"
@@ -44,17 +44,17 @@ def translateProgram(source: str, program: Program, force_soa: bool) -> str:
 
     # 2. Update loop calls
     for loop in program.loops:
-
-        print(f'loop {loop.kernel}')
-
-        if loop.loop_type == OP.LoopType.PAR_LOOP:
+        if loop.loop_type == OPP.LoopType.PAR_LOOP:
             before, after = buffer.get(loop.loc.line - lines_removed - 1).split("opp_par_loop", 1)
             after = re.sub(
-                rf"{loop.kernel}\s*,\s*\"{loop.loop_name}\"\s*,\s*", "", after, count=1
-            )  # TODO: This assumes that the kernel arg is on the same line as the call
+                rf"{loop.kernel}\s*,\s*\"{loop.loop_name}\"\s*,\s*(\w+)\s*,\s*(OPP_ITERATE_ALL|OPP_ITERATE_INJECTED)\s*,", 
+                r"\1, ",  # Keep the c_set portion
+                after, 
+                count=1
+            )
             buffer.update(loop.loc.line - lines_removed - 1, before + f"opp_par_loop_{loop.iterator_type.name}__{loop.kernel}" + after)
 
-        elif loop.loop_type == OP.LoopType.MOVE_LOOP:
+        elif loop.loop_type == OPP.LoopType.MOVE_LOOP:
             before, after = buffer.get(loop.loc.line - lines_removed - 1).split("opp_particle_move", 1)
             after = re.sub(
                 rf"{loop.kernel}\s*,\s*\"{loop.loop_name}\"\s*,\s*", "", after, count=1
@@ -66,13 +66,12 @@ def translateProgram(source: str, program: Program, force_soa: bool) -> str:
     assert index is not None
     index += 2
 
-    # buffer.insert(index, '#ifdef OPENACC\n#ifdef __cplusplus\nextern "C" {\n#endif\n#endif\n')
     loop_list = []
     move_loop = None
     for loop in program.loops:
-        if loop.loop_type == OP.LoopType.PAR_LOOP:
-            prototype = f'void opp_par_loop_{loop.iterator_type.name}__{loop.kernel}(opp_set,opp_iterate_type{",opp_arg" * len(loop.args)});'
-        elif loop.loop_type == OP.LoopType.MOVE_LOOP:
+        if loop.loop_type == OPP.LoopType.PAR_LOOP:
+            prototype = f'void opp_par_loop_{loop.iterator_type.name}__{loop.kernel}(opp_set{",opp_arg" * len(loop.args)});'
+        elif loop.loop_type == OPP.LoopType.MOVE_LOOP:
             prototype = f'void opp_particle_move__{loop.kernel}(opp_set,opp_map,opp_map{",opp_arg" * len(loop.args)});'
             move_loop = loop
 
@@ -84,7 +83,7 @@ def translateProgram(source: str, program: Program, force_soa: bool) -> str:
     dh_api_match = re.search(pattern, source)
 
     if dh_api_match:
-        prototype = f'void opp_init_direct_hop_cg(double,int,const opp_dat,const opp::BoundingBox&,opp_map,opp_map{",opp_arg" * len(move_loop.args)});'
+        prototype = f'void opp_init_direct_hop_cg(double,const opp_dat,const opp::BoundingBox&,opp_map,opp_map{",opp_arg" * len(move_loop.args)});'
         buffer.insert(index, prototype)
         index += 1
         move_loop.dh_loop_required = True

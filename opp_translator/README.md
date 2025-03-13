@@ -42,3 +42,8 @@ In addition to the regular `opp_decl_set`, `opp_decl_particle_set`, `opp_decl_ma
 
 An example usage of hdf5 APIs can found in `OP-PIC/app_fempic`. 
 To code-gen the hdf5 version, simply use `python3 $OPP_TRANSLATOR -v -I$OPP_PATH/include/ --file_paths fempic_hdf5.cpp`.
+
+# Notes
+
+## Use ``--no-cache-dir`` in ``python3 -m pip install`` commands of ``setup_venv.py`` to re-download avoiding use of cached libs
+

@@ -32,82 +32,65 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <opp_mpi_core.h>
 
-MPI_Comm OPP_MPI_WORLD;
-MPI_Comm OPP_MPI_GLOBAL;
-
 void opp_halo_create();
 void opp_part_comm_init();
+
+MPI_Comm OPP_MPI_WORLD;
+std::map<int, opp_dat> negative_mapping_indices; // Used to sanitize and desanitize mappings
+
+using namespace opp;
 
 //*******************************************************************************
 void opp_partition_core(std::string lib_name, opp_set prime_set, opp_map prime_map, opp_dat data)
 {
-    if (lib_name == "PARMETIS_KWAY")
-    {
+    if (lib_name == "PARMETIS_KWAY") {
 #ifdef HAVE_PARMETIS
-        if (prime_map != NULL)
-        {
+        if (prime_map != NULL) {
             opp_partition_kway(prime_map); // use parmetis kway partitioning
         }
-        else
-        {
+        else {
             opp_abort("opp_partition PARMETIS_KWAY Error: Partitioning prime_map : NULL - UNSUPPORTED Partitioner Specification");  
         }
 #else
         opp_abort("opp_partition_core PARMETIS_KWAY Error: Parmetis not installed or not defined");
 #endif
     }
-    else if (lib_name == "PARMETIS_GEOM")
-    {
+    else if (lib_name == "PARMETIS_GEOM") {
 #ifdef HAVE_PARMETIS
-        if (data != NULL)
-        {
+        if (data != NULL) {
             opp_partition_geom(data); // use parmetis geometric partitioning
         }
-        else
-        {
+        else {
             opp_abort("opp_partition PARMETIS_GEOM Error: Partitioning geom dat : NULL - UNSUPPORTED Partitioner Specification"); 
         }
 #else
         opp_abort("opp_partition_core PARMETIS_GEOM Error: Parmetis not installed or not defined");
 #endif
     }
-    else if (lib_name == "EXTERNAL")
-    {
-        if (data != NULL)
-        {
+    else if (lib_name == "EXTERNAL") {
+        if (data != NULL) {
             opp_partition_external(prime_set, data); // use external partitioning dat
         }
-        else
-        {
+        else {
             opp_abort("opp_partition EXTERNAL Error: Partitioning color dat : NULL - UNSUPPORTED Partitioner Specification"); 
         }
     }
-    else if (lib_name != "")
-    {
+    else if (lib_name != "") {
         opp_abort("opp_partition Error: Unsupported lib_name - UNSUPPORTED Partitioner Specification");
     }
 
-    // for (int s = 0; s < opp_set_index; s++) // for each set
-    // { 
+    // for (int s = 0; s < opp_set_index; s++) { 
     //     opp_set set = opp_set_list[s];
-
     //     if (std::string(set->name) != std::string("mesh_cells")) continue;
-
-    //     for (int m = 0; m < OPP_map_index; m++) // for each maping table
-    //     { 
+    //     for (int m = 0; m < OPP_map_index; m++) { // for each maping table
     //         opp_map map = OPP_map_list[m];
-
-    //         if (compare_sets(map->from, set) == 1) // need to select mappings FROM this set
-    //         { 
+    //         if (compare_sets(map->from, set) == 1) {// need to select mappings FROM this set
     //             opp_print_map_to_txtfile(map  , "BACKEND", map->name);
     //         }
     //     }
-    //     for (int k = 0; k < OPP_dat_index; k++) // for each dat
-    //     {
+    //     for (int k = 0; k < OPP_dat_index; k++) { // for each dat
     //         opp_dat dat = OPP_dat_list[k];
-
-    //         if (std::string(dat->name) == std::string("c_index")) // if this data array is defined on this set
-    //         { 
+    //         if (std::string(dat->name) == std::string("c_index")) { // if this data array is defined on this set
     //             opp_print_dat_to_txtfile(dat, "BACKEND", dat->name);
     //         }
     //     }
@@ -119,8 +102,7 @@ void opp_partition_core(std::string lib_name, opp_set prime_set, opp_map prime_m
 
     std::vector<std::vector<int>> set_sizes(opp_sets.size());
 
-    for (opp_set set : opp_sets)
-    {
+    for (opp_set set : opp_sets) {
         std::vector<int>& recv_vec = set_sizes[set->index];
         recv_vec.resize(OPP_comm_size * 3);
 
@@ -129,8 +111,7 @@ void opp_partition_core(std::string lib_name, opp_set prime_set, opp_map prime_m
     }
 
     // print the set sizes of all ranks after partitioning
-    if (OPP_rank == OPP_ROOT)
-    {
+    if (OPP_rank == OPP_ROOT) {
         std::string log = "";
 
         for (opp_set set : opp_sets)
@@ -138,8 +119,7 @@ void opp_partition_core(std::string lib_name, opp_set prime_set, opp_map prime_m
 
         opp_printf("opp_partition()", "(size|ieh|inh) %s", log.c_str());
 
-        for (int i = 0; i < OPP_comm_size; i++)
-        {
+        for (int i = 0; i < OPP_comm_size; i++) {
             log = "RANK [" + std::to_string(i) + "]";
             
             for (int j = 0; j < (int)opp_sets.size(); j++)
@@ -151,52 +131,42 @@ void opp_partition_core(std::string lib_name, opp_set prime_set, opp_map prime_m
     }
 }
 
-std::map<int, opp_dat> negative_mapping_indices;
-
 //*******************************************************************************
 void opp_sanitize_all_maps()
 {
-    for (int i = 0; i < (int)opp_maps.size(); i++)
-    {
-        opp_map map = opp_maps[i];
+    for (opp_map& map : opp_maps) {
+        if (map->dim == 1) 
+            continue;
 
-        if (map->dim == 1) continue;
-
-        if (OPP_DBG) opp_printf("opp_sanitize_all_maps", " map: %s | ptr: %p | dim: %d", map->name, map->map, map->dim);
+        if (OPP_DBG) 
+            opp_printf("opp_sanitize_all_maps", " map: %s | ptr: %p | dim: %d", map->name, map->map, map->dim);
 
         std::string name = std::string("AUTO_DAT_") + map->name;
-        opp_dat dat = opp_decl_mesh_dat(map->from, map->dim, DT_INT, (char*)map->map, name.c_str());  
+        opp_dat dat = opp_decl_dat(map->from, map->dim, DT_INT, (char*)map->map, name.c_str());  
         negative_mapping_indices[map->index] = dat;
 
-        memset(dat->data, 0, (map->from->size * dat->size));
+        memset(dat->data, 0, ((size_t)(map->from->size) * dat->size));
 
-        for (int n = 0; n < map->from->size; n++)
-        {
+        for (int n = 0; n < map->from->size; n++) {
             int positive_mapping = -1;
             std::vector<int> index;
 
-            for (int d = 0; d < map->dim; d++)
-            {
-                if (map->map[n * map->dim + d] < 0)
-                {
+            for (int d = 0; d < map->dim; d++) {
+                if (map->map[n * map->dim + d] < 0) {
                     index.push_back(n * map->dim + d);
                 }
-                else
-                {
+                else {
                     positive_mapping = map->map[n * map->dim + d];
                 }
             }
 
-            if (positive_mapping >= 0)
-            {
-                for (int i : index)
-                {
-                    map->map[i] = positive_mapping;
-                    ((int*)dat->data)[i] = 1;
+            if (positive_mapping >= 0) {
+                for (int j : index) {
+                    map->map[j] = positive_mapping;
+                    ((OPP_INT*)dat->data)[j] = 1;
                 }
             }
-            else
-            {
+            else {
                 std::string log = "";
                 for (int d = 0; d < map->dim; d++)
                     log += std::to_string(map->map[n * map->dim + d]) + " ";
@@ -206,21 +176,16 @@ void opp_sanitize_all_maps()
         }
     }
 
-    // if (OPP_DBG)
-    // {
-    //     for (int i = 0; i < opp_maps.size(); i++)
-    //     {
+    // if (OPP_DBG) {
+    //     for (int i = 0; i < opp_maps.size(); i++) {
     //         opp_map map = opp_maps[i];
-            
-    //         opp_printf("opp_sanitize_all_maps", OPP_rank, " map: %s | from->size: %d | dim: %d", map->name, map->from->size, map->dim);
-
-    //         for (int n = 0; n < map->from->size; n++)
-    //         {
-    //             for (int d = 1; d < map->dim; d++)
-    //             {
-    //                 if (map->map[n * map->dim + d] < 0)
-    //                 {
-    //                     opp_printf("opp_sanitize_all_maps", OPP_rank, "Error: map: %s | ptr: %p | negative mapping at index: %d [%d]", map->name, map->map, n, n * map->dim + d);
+    //         opp_printf("opp_sanitize_all_maps", " map: %s | from->size: %d | dim: %d", 
+    //              map->name, map->from->size, map->dim);
+    //         for (int n = 0; n < map->from->size; n++) {
+    //             for (int d = 1; d < map->dim; d++) {
+    //                 if (map->map[n * map->dim + d] < 0) {
+    //                     opp_printf("opp_sanitize_all_maps", "Error: map: %s | ptr: %p | negative mapping at index: %d [%d]", 
+    //                          map->name, map->map, n, n * map->dim + d);
     //                 }
     //             }
     //         }
@@ -231,25 +196,21 @@ void opp_sanitize_all_maps()
 //*******************************************************************************
 void opp_desanitize_all_maps()
 {
-    for (int i = 0; i < (int)opp_maps.size(); i++)
-    {
-        opp_map map = opp_maps[i];
-
+    for (opp_map& map : opp_maps) {
         if (map->dim == 1) continue;
 
-        if (OPP_DBG) opp_printf("opp_desanitize_all_maps", " map: %s | ptr: %p | dim: %d", map->name, map->map, map->dim);
+        if (OPP_DBG) 
+            opp_printf("opp_desanitize_all_maps", " map: %s | ptr: %p | dim: %d", map->name, map->map, map->dim);
 
         auto it = negative_mapping_indices.find(map->index);
-        if (it == negative_mapping_indices.end())
-        {
+        if (it == negative_mapping_indices.end()) {
             opp_printf("opp_desanitize_all_maps", "Error: Negative mappings not found for map: %s", map->name);
             continue;
         }
             
         opp_dat dat = it->second;
 
-        for (int x = 0; x < (map->from->size + map->from->exec_size) * map->dim; x++)
-        {
+        for (int x = 0; x < (map->from->size + map->from->exec_size) * map->dim; x++) {
             if (((int*)dat->data)[x] == 1)
                 map->map[x] = -1;
         }
@@ -262,8 +223,7 @@ void opp_desanitize_all_maps()
 //****************************************
 void opp_get_start_end(opp_set set, opp_reset reset, int& start, int& end)
 {
-    switch (reset)
-    {
+    switch (reset) {
         case OPP_Reset_Core:
             start = 0;
             end = set->core_size;
@@ -290,32 +250,27 @@ void opp_get_start_end(opp_set set, opp_reset reset, int& start, int& end)
 }
 
 //*******************************************************************************
-//*******************************************************************************
-
-using namespace opp;
-
 Comm::Comm(MPI_Comm comm_parent) {
     this->comm_parent = comm_parent;
 
     int rank_parent;
-    CHECK(MPI_Comm_rank(comm_parent, &rank_parent))
-    CHECK(MPI_Comm_split_type(comm_parent, MPI_COMM_TYPE_SHARED, 0,
+    MPI_CHECK(MPI_Comm_rank(comm_parent, &rank_parent))
+    MPI_CHECK(MPI_Comm_split_type(comm_parent, MPI_COMM_TYPE_SHARED, 0,
                             MPI_INFO_NULL, &this->comm_intra))
 
     int rank_intra;
-    CHECK(MPI_Comm_rank(this->comm_intra, &rank_intra))
+    MPI_CHECK(MPI_Comm_rank(this->comm_intra, &rank_intra))
     const int colour_intra = (rank_intra == 0) ? 1 : MPI_UNDEFINED;
-    CHECK(MPI_Comm_split(comm_parent, colour_intra, 0, &this->comm_inter))
+    MPI_CHECK(MPI_Comm_split(comm_parent, colour_intra, 0, &this->comm_inter))
 
-    CHECK(MPI_Comm_rank(this->comm_parent, &this->rank_parent))
-    CHECK(MPI_Comm_rank(this->comm_intra, &this->rank_intra))
-    CHECK(MPI_Comm_size(this->comm_parent, &this->size_parent))
-    CHECK(MPI_Comm_size(this->comm_intra, &this->size_intra))
+    MPI_CHECK(MPI_Comm_rank(this->comm_parent, &this->rank_parent))
+    MPI_CHECK(MPI_Comm_rank(this->comm_intra, &this->rank_intra))
+    MPI_CHECK(MPI_Comm_size(this->comm_parent, &this->size_parent))
+    MPI_CHECK(MPI_Comm_size(this->comm_intra, &this->size_intra))
     
     if (comm_inter != MPI_COMM_NULL) {
-
-        CHECK(MPI_Comm_rank(this->comm_inter, &this->rank_inter))
-        CHECK(MPI_Comm_size(this->comm_inter, &this->size_inter))
+        MPI_CHECK(MPI_Comm_rank(this->comm_inter, &this->rank_inter))
+        MPI_CHECK(MPI_Comm_size(this->comm_inter, &this->size_inter))
     }
 
     if (OPP_DBG)
@@ -326,15 +281,15 @@ Comm::Comm(MPI_Comm comm_parent) {
 
 Comm::~Comm() {
 
-    if ((this->comm_intra != MPI_COMM_NULL) && (this->comm_intra != MPI_COMM_WORLD)) {
+    if ((this->comm_intra != MPI_COMM_NULL) && (this->comm_intra != OPP_MPI_WORLD)) {
         
-        CHECK(MPI_Comm_free(&this->comm_intra))
+        MPI_CHECK(MPI_Comm_free(&this->comm_intra))
         this->comm_intra = MPI_COMM_NULL;
     }
 
-    if ((this->comm_inter != MPI_COMM_NULL) && (this->comm_inter != MPI_COMM_WORLD)) {
+    if ((this->comm_inter != MPI_COMM_NULL) && (this->comm_inter != OPP_MPI_WORLD)) {
 
-        CHECK(MPI_Comm_free(&this->comm_inter))
+        MPI_CHECK(MPI_Comm_free(&this->comm_inter))
         this->comm_intra = MPI_COMM_NULL;
     }
 }
@@ -357,13 +312,14 @@ void __opp_colour_cartesian_mesh(const int ndim, std::vector<int> cell_counts, o
 
     MPI_Dims_create(OPP_comm_size, ndim, mpi_dims);
 
-    std::vector<int> cell_count_ordering = reverse_argsort(cell_counts); // direction with most cells first to match mpi_dims order
+    // direction with most cells first to match mpi_dims order
+    std::vector<int> cell_count_ordering = reverse_argsort(cell_counts); 
 
     std::vector<int> mpi_dims_reordered(ndim);
     for (int dimx = 0; dimx < ndim; dimx++)  // reorder the mpi_dims to match the actual domain
         mpi_dims_reordered[cell_count_ordering[dimx]] = mpi_dims[dimx];
 
-    MPI_Cart_create(MPI_COMM_WORLD, ndim, mpi_dims_reordered.data(), periods, 1, &comm_cart);
+    MPI_Cart_create(OPP_MPI_WORLD, ndim, mpi_dims_reordered.data(), periods, 1, &comm_cart);
     MPI_Cart_get(comm_cart, ndim, mpi_dims, periods, coords);
 
     for (int dimx = 0; dimx < ndim; dimx++) 
@@ -377,11 +333,10 @@ void __opp_colour_cartesian_mesh(const int ndim, std::vector<int> cell_counts, o
     std::vector<int> all_cell_starts(OPP_comm_size * ndim);
     std::vector<int> all_cell_ends(OPP_comm_size * ndim);
 
-    MPI_Allgather(cell_starts, ndim, MPI_INT, all_cell_starts.data(), ndim, MPI_INT, MPI_COMM_WORLD);
-    MPI_Allgather(cell_ends, ndim, MPI_INT, all_cell_ends.data(), ndim, MPI_INT, MPI_COMM_WORLD);
+    MPI_Allgather(cell_starts, ndim, MPI_INT, all_cell_starts.data(), ndim, MPI_INT, OPP_MPI_WORLD);
+    MPI_Allgather(cell_ends, ndim, MPI_INT, all_cell_ends.data(), ndim, MPI_INT, OPP_MPI_WORLD);
 
-    if (OPP_rank == OPP_ROOT)
-    {
+    if (OPP_rank == OPP_ROOT) {
         std::string log = "";
         for (int r = 0; r < OPP_comm_size; r++) {
             log += std::string("\nrank ") + std::to_string(r) + " start (";
@@ -411,8 +366,7 @@ void __opp_colour_cartesian_mesh(const int ndim, std::vector<int> cell_counts, o
 
     // used global id of cell and assign the color to the correct MPI rank
     const OPP_INT* gcid = ((OPP_INT*)cell_index->data);
-    for (OPP_INT i = 0; i < cell_index->set->size; i++)
-    {
+    for (OPP_INT i = 0; i < cell_index->set->size; i++) {
         int coord[3] = {-1, -1 -1};
         CART_RANK_TO_INDEX(gcid[i], coord[0], coord[1], coord[2], cell_counts[0], cell_counts[1]);
 
@@ -425,22 +379,18 @@ void __opp_colour_cartesian_mesh(const int ndim, std::vector<int> cell_counts, o
             }
         }
 
-        for (int rank = 0; rank < OPP_comm_size; rank++) 
-        {
+        for (int rank = 0; rank < OPP_comm_size; rank++) {
             bool is_rank_suitable[3] = { true, true, true };
 
-            for (int dimx = 0; dimx < ndim; dimx++) 
-            {
+            for (int dimx = 0; dimx < ndim; dimx++) {
                 if ((all_cell_starts[ndim*rank+dimx] > coord[dimx]) || 
-                    (all_cell_ends[ndim*rank+dimx] <= coord[dimx]))
-                {
+                    (all_cell_ends[ndim*rank+dimx] <= coord[dimx])) {
                     is_rank_suitable[dimx] = false;
                     break;
                 }
             }
 
-            if (is_rank_suitable[0] && is_rank_suitable[1] && is_rank_suitable[2])
-            {
+            if (is_rank_suitable[0] && is_rank_suitable[1] && is_rank_suitable[2]) {
                 ((OPP_INT*)cell_colors->data)[i] = rank;
                 break;
             }
@@ -459,8 +409,7 @@ void opp_mpi_reduce_double(opp_arg *arg, double *data)
     if (arg->data == NULL)
         return;
 
-    if (arg->argtype == OPP_ARG_GBL && arg->acc != OPP_READ) 
-    {
+    if (arg->argtype == OPP_ARG_GBL && arg->acc != OPP_READ) {
         double result_static;
         double *result;
         
@@ -469,34 +418,28 @@ void opp_mpi_reduce_double(opp_arg *arg, double *data)
         else
             result = &result_static;
 
-        if (arg->acc == OPP_INC) // global reduction
-        {
+        if (arg->acc == OPP_INC) {
             MPI_Allreduce((double *)arg->data, result, arg->dim, MPI_DOUBLE, MPI_SUM,
-                            MPI_COMM_WORLD);
+                            OPP_MPI_WORLD);
             memcpy(arg->data, result, sizeof(double) * arg->dim);
         } 
-        else if (arg->acc == OPP_MAX) // global maximum
-        {
+        else if (arg->acc == OPP_MAX) {
             MPI_Allreduce((double *)arg->data, result, arg->dim, MPI_DOUBLE, MPI_MAX,
-                            MPI_COMM_WORLD);
+                            OPP_MPI_WORLD);
             memcpy(arg->data, result, sizeof(double) * arg->dim);
         } 
-        else if (arg->acc == OPP_MIN) // global minimum
-        {
+        else if (arg->acc == OPP_MIN) {
             MPI_Allreduce((double *)arg->data, result, arg->dim, MPI_DOUBLE, MPI_MIN,
-                            MPI_COMM_WORLD);
+                            OPP_MPI_WORLD);
             memcpy(arg->data, result, sizeof(double) * arg->dim);
         } 
-        else if (arg->acc == OPP_WRITE) // any
-        {
-            result = (double *)opp_host_malloc(arg->dim * OPP_comm_size * sizeof(double));
+        else if (arg->acc == OPP_WRITE) {
+            result = (double *)opp_host_malloc(arg->dim * OPP_comm_size * sizeof(double)); // memory leak
             MPI_Allgather((double *)arg->data, arg->dim, MPI_DOUBLE, result, arg->dim,
-                            MPI_DOUBLE, MPI_COMM_WORLD);
+                            MPI_DOUBLE, OPP_MPI_WORLD);
             
-            for (int i = 1; i < OPP_comm_size; i++) 
-            {
-                for (int j = 0; j < arg->dim; j++) 
-                {
+            for (int i = 1; i < OPP_comm_size; i++) {
+                for (int j = 0; j < arg->dim; j++) {
                     if (result[i * arg->dim + j] != 0.0)
                         result[j] = result[i * arg->dim + j];
                 }
@@ -508,7 +451,7 @@ void opp_mpi_reduce_double(opp_arg *arg, double *data)
         }
 
         if (arg->dim > 1)
-            opp_host_free(result);
+            opp_host_free(result); // double deletion in OPP_WRITE path
     }
 }
 
@@ -520,8 +463,7 @@ void opp_mpi_reduce_int(opp_arg *arg, int *data)
     if (arg->data == NULL)
         return;
 
-    if (arg->argtype == OPP_ARG_GBL && arg->acc != OPP_READ) 
-    {
+    if (arg->argtype == OPP_ARG_GBL && arg->acc != OPP_READ) {
         int result_static;
         int *result;
 
@@ -530,33 +472,27 @@ void opp_mpi_reduce_int(opp_arg *arg, int *data)
         else
             result = &result_static;
 
-        if (arg->acc == OPP_INC) // global reduction
-        {
+        if (arg->acc == OPP_INC) {
             MPI_Allreduce((int *)arg->data, result, arg->dim, MPI_INT, MPI_SUM,
-                            MPI_COMM_WORLD);
+                            OPP_MPI_WORLD);
             memcpy(arg->data, result, sizeof(int) * arg->dim);
         } 
-        else if (arg->acc == OPP_MAX) // global maximum
-        {
+        else if (arg->acc == OPP_MAX) {
             MPI_Allreduce((int *)arg->data, result, arg->dim, MPI_INT, MPI_MAX,
-                            MPI_COMM_WORLD);
+                            OPP_MPI_WORLD);
             memcpy(arg->data, result, sizeof(int) * arg->dim);
         } 
-        else if (arg->acc == OPP_MIN) // global minimum
-        {
+        else if (arg->acc == OPP_MIN) {
             MPI_Allreduce((int *)arg->data, result, arg->dim, MPI_INT, MPI_MIN,
-                            MPI_COMM_WORLD);
+                            OPP_MPI_WORLD);
             memcpy(arg->data, result, sizeof(int) * arg->dim);
         } 
-        else if (arg->acc == OPP_WRITE) // any
-        {
-            result = (int *)opp_host_malloc(arg->dim * OPP_comm_size * sizeof(int));
+        else if (arg->acc == OPP_WRITE) {
+            result = (int *)opp_host_malloc(arg->dim * OPP_comm_size * sizeof(int)); // memory leak
             MPI_Allgather((int *)arg->data, arg->dim, MPI_INT, result, arg->dim,
-                            MPI_INT, MPI_COMM_WORLD);
-            for (int i = 1; i < OPP_comm_size; i++) 
-            {
-                for (int j = 0; j < arg->dim; j++) 
-                {
+                            MPI_INT, OPP_MPI_WORLD);
+            for (int i = 1; i < OPP_comm_size; i++) {
+                for (int j = 0; j < arg->dim; j++) {
                     if (result[i * arg->dim + j] != 0)
                         result[j] = result[i * arg->dim + j];
                 }
@@ -566,6 +502,6 @@ void opp_mpi_reduce_int(opp_arg *arg, int *data)
                 opp_host_free(result);
         }
         if (arg->dim > 1)
-            opp_host_free(result);
+            opp_host_free(result); // double deletion in OPP_WRITE path
     }
 }

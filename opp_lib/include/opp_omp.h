@@ -50,7 +50,7 @@ struct opp_tmp_gbl_move_info
         set(_set), part_idx(_part_idx), struct_cell_rank(_struct_cell_rank), gbl_cell_idx(_gbl_cell_idx) {}
 };
 
-extern int OPP_nthreads;
+extern int opp_nthreads;
 extern std::vector<int> part_remove_count_per_thr;
 extern std::vector<std::vector<int>> move_part_indices_per_thr;
 extern std::vector<std::vector<opp_tmp_gbl_move_info>> gbl_move_indices_per_thr;
@@ -63,8 +63,7 @@ void opp_create_thread_level_data(opp_arg arg, T init_value)
     opp_set set = dat->set;
     const int nthreads = omp_get_max_threads();
 
-    if (dat->set->is_particle)
-    {
+    if (dat->set->is_particle) {
         std::cerr << "Cannot create thread level data for particle dat [" << dat->name << 
             "] (dat in a dynamic set)" << std::endl;
         exit(-1);
@@ -74,19 +73,16 @@ void opp_create_thread_level_data(opp_arg arg, T init_value)
 
     const size_t dat_set_size = (size_t)(set->size) + (size_t)(set->exec_size) + (size_t)(set->nonexec_size);
 
-    if (dat->thread_data->size() <= 0)
-    {
+    if (dat->thread_data->size() <= 0) {
         dat->thread_data->push_back(dat->data);
 
-        for (int thr = 1; thr < nthreads; thr++)
-        {
+        for (int thr = 1; thr < nthreads; thr++) {
             char* thr_data = (char *)opp_host_malloc((size_t)dat->size * dat_set_size * sizeof(char));;
             dat->thread_data->push_back(thr_data);
         }
     }
 
-    if ((int)dat->thread_data->size() != nthreads)
-    {
+    if ((int)dat->thread_data->size() != nthreads) {
         std::cerr << "opp_create_thread_level_data dat [" << dat->name << 
             "] thread_data not properly created [(int)dat->thread_data.size():" << (int)dat->thread_data->size() << 
             " nthreads:" << nthreads << std::endl;
@@ -94,8 +90,7 @@ void opp_create_thread_level_data(opp_arg arg, T init_value)
     }
 
     #pragma omp parallel for
-    for (int thr = 1; thr < nthreads; thr++)
-    {
+    for (int thr = 1; thr < nthreads; thr++) {
         std::fill_n((T*)(dat->thread_data->at(thr)), (dat->dim * dat_set_size), init_value);
     }
 }
@@ -108,19 +103,18 @@ void opp_reduce_thread_level_data(opp_arg arg)
     opp_set set = dat->set;
     std::vector<char *>& thread_data = *(dat->thread_data);
 
-    int nthreads = omp_get_max_threads();
+    const int nthreads = omp_get_max_threads();
 
     if (OPP_DBG) printf("opp_reduce_thread_level_data dat [%s] nthreads [%d]\n", dat->name, nthreads);
 
-    if (set->size > 0) 
-    {
+    if (set->size > 0) {
         const size_t dat_set_size = (size_t)(set->size) + (size_t)(set->exec_size) + (size_t)(set->nonexec_size);
 
         #pragma omp parallel for
-        for (int thr = 0; thr < nthreads; thr++)
-        {
-            int start  = ((dat->dim * dat_set_size)* thr)/nthreads;
-            int finish = ((dat->dim * dat_set_size)*(thr+1))/nthreads;
+        for (int thr = 0; thr < nthreads; thr++) {
+            const int start  = ((dat->dim * dat_set_size)* thr)/nthreads;
+            const int finish = ((dat->dim * dat_set_size)*(thr+1))/nthreads;
+            
             // if (OPP_DBG) printf("opp_reduce_thread_level_data THREAD [%d] %d %d\n", thr, start, finish);
             for (int n = start; n < finish; n++)
             {
@@ -128,8 +122,7 @@ void opp_reduce_thread_level_data(opp_arg arg)
                 {
                     T* td = (T*)thread_data[array_num];
 
-                    switch (arg.acc)
-                    {
+                    switch (arg.acc) {
                         case OPP_INC:
                             ((T*)dat->data)[n] += td[n];
                             break;
@@ -144,22 +137,15 @@ void opp_reduce_thread_level_data(opp_arg arg)
     }
 }
 
-void opp_finalize_particle_move_omp(opp_set set);
-
-bool opp_part_check_status_omp(opp_move_var& m, int map0idx, opp_set set, 
-    int particle_index, int& remove_count, int thread);
 /*******************************************************************************/
-
 void opp_halo_create();
 void opp_halo_destroy();
 
 /*******************************************************************************/
-
 void print_dat_to_txtfile_mpi(opp_dat dat, const char *file_name);
 void opp_mpi_print_dat_to_txtfile(opp_dat dat, const char *file_name);
 
 /*******************************************************************************/
-
 inline void opp_mpi_reduce(opp_arg *args, double *data) 
 {
 #ifdef USE_MPI
@@ -180,13 +166,6 @@ inline void opp_mpi_reduce(opp_arg *args, int *data)
 #endif
 }
 
-enum oppx_move_status : char
-{
-    OPPX_MOVE_DONE = 0,
-    OPPX_NEED_MOVE,
-    OPPX_NEED_REMOVE,
-};
-
 #define OPP_PARTICLE_MOVE_DONE {  }
 #define OPP_PARTICLE_NEED_MOVE {  }
 #define OPP_PARTICLE_NEED_REMOVE {  }
@@ -199,20 +178,17 @@ inline bool opp_check_part_move_status(const char move_flag, bool& iter_one_flag
 {
     iter_one_flag = false;
 
-    if (move_flag == OPP_MOVE_DONE)
-    {
+    if (move_flag == OPP_MOVE_DONE) {
         return false;
     }
-    else if (move_flag == OPP_NEED_REMOVE)
-    {
+    else if (move_flag == OPP_NEED_REMOVE) {
         part_remove_count_per_thr[thread] += 1;
         OPP_mesh_relation_data[particle_index] = MAX_CELL_INDEX;
 
         return false;
     }
 #ifdef USE_MPI
-    else if (map0idx >= OPP_part_cells_set_size)
-    {
+    else if (map0idx >= OPP_part_cells_set_size) {
         // map0idx cell is not owned by the current mpi rank (it is in the import exec halo region), need to communicate
         move_part_indices_per_thr[thread].push_back(particle_index);
         return false;
@@ -227,7 +203,7 @@ inline bool opp_check_part_move_status(const char move_flag, bool& iter_one_flag
 inline bool opp_part_checkForGlobalMove_util(opp_set set, const opp_point& point, const int partIndex, 
             int& cellIdx, const size_t structCellIdx, const int thread) {
 
-    if (structCellIdx == MAX_CELL_INDEX) { // This happens when point is out of the unstructured mesh
+    if (structCellIdx == MAX_CELL_INDEX || structCellIdx == OPP_OUT_OF_SAVED_DOMAIN) { // This happens when point is out of the unstructured mesh
         if (false && OPP_DBG)
             opp_printf("opp_part_checkForGlobalMove", 
             "Remove %d [Struct cell index invalid - strCellIdx:%zu] [%2.16lE, %2.16lE, %2.16lE]", 
@@ -278,8 +254,7 @@ inline bool opp_part_checkForGlobalMove_util(opp_set set, const opp_point& point
     }
     else
 #endif 
-    {
-        
+    {  
         // Due to renumbering local cell indices will be different to global, hence do global comm with global indices
         cellIdx = cellMapper->findClosestCellIndex(structCellIdx);
 
@@ -301,7 +276,8 @@ inline bool opp_part_checkForGlobalMove_util(opp_set set, const opp_point& point
 //*******************************************************************************
 // returns true, if the current particle needs to be removed from the rank
 inline bool opp_part_checkForGlobalMove2D(opp_set set, const opp_point& point, const int partIndex, 
-        int& cellIdx, const int thread) {
+        int& cellIdx, const int thread) 
+{
     const size_t structCellIdx = cellMapper->findStructuredCellIndex2D(point);
     return opp_part_checkForGlobalMove_util(set, point, partIndex, cellIdx, structCellIdx, thread);
 }
@@ -309,15 +285,16 @@ inline bool opp_part_checkForGlobalMove2D(opp_set set, const opp_point& point, c
 //*******************************************************************************
 // returns true, if the current particle needs to be removed from the rank
 inline bool opp_part_checkForGlobalMove3D(opp_set set, const opp_point& point, const int partIndex, 
-        int& cellIdx, const int thread) {
+        int& cellIdx, const int thread) 
+{
     const size_t structCellIdx = cellMapper->findStructuredCellIndex3D(point);
     return opp_part_checkForGlobalMove_util(set, point, partIndex, cellIdx, structCellIdx, thread);
 }
 
 //*******************************************************************************
 // gathers all per thread global move information into the global mover for communication
-inline void opp_gather_gbl_move_indices() {
-
+inline void opp_gather_gbl_move_indices()
+{
 #ifdef USE_MPI
     for (auto& per_thread_info : gbl_move_indices_per_thr) {
         for (auto& p_info : per_thread_info) {

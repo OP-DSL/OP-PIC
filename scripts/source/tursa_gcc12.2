@@ -1,0 +1,32 @@
+#!/bin/bash
+
+export OPP=$HOME/phd/OP-PIC
+export OPP_INSTALL_PATH=$OPP/opp_install
+export OPP_TRANSLATOR=$OPP/opp_translator/translator
+export OPP_PATH=$OPP/opp_lib
+
+export CC_COMPILER=g++
+export MPI_COMPILER=mpicxx
+export HIP_COMPILER=hipcc
+
+module load gcc/12.2.0
+
+module load openmpi/4.1.5-cuda12.3
+export MPI_INSTALL_PATH=/home/y07/shared/libs/openmpi/4.1.5.4/gcc12-cuda12
+
+module load cuda/12.3 
+export CUDA_INSTALL_PATH=/mnt/lustre/tursafs1/apps/cuda/12.3
+export LD_LIBRARY_PATH=$CUDA_INSTALL_PATH/targets/x86_64-linux/lib/stubs:$LD_LIBRARY_PATH
+export LIBRARY_PATH=$CUDA_INSTALL_PATH/targets/x86_64-linux/lib/stubs:$LIBRARY_PATH
+export NVCCFLAGS_ADD='-gencode arch=compute_80,code=sm_80'
+
+export OPP=$HOME/phd/OP-PIC
+export OPP_INSTALL_PATH=$OPP/opp_install
+export OPP_TRANSLATOR=$OPP/opp_translator/translator
+export OPP_PATH=$OPP/opp_lib
+
+export PETSC_INSTALL_PATH=$HOME/lib_install/petsc-3.22.3-gcc-12.2-mpi
+export LD_LIBRARY_PATH=$PETSC_INSTALL_PATH/lib:$LD_LIBRARY_PATH
+
+export HDF5_INSTALL_PATH=$HOME/lib_install/hdf5-1.14.3_gcc12.2-mpi
+export LD_LIBRARY_PATH=$HDF5_INSTALL_PATH/lib:$LD_LIBRARY_PATH

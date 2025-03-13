@@ -32,7 +32,7 @@ INT opp_gpu_direct = 0
 
 # block k-means
 STRING cluster = block
-BOOL use_reg_red = false
+BOOL opp_segmented_red = false
 
 # HoleFill_All Sort_All Shuffle_All Sort_Periodic Shuffle_Periodic
 STRING opp_fill = Shuffle_Periodic

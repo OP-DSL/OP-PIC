@@ -1,0 +1,30 @@
+# System parameters
+
+# number of time steps
+INT num_steps = 250 
+
+# number of particles per cell
+INT ppc       = 1000  
+
+# number of cell per process          
+INT ncpp      = 10000
+
+# defines a fraction of dt vs. time steps from plasma frequency;
+REAL dtfactor = 0.001 
+
+# applied voltage on left-hand side; RHS is grounded; 
+INT lhsv      = 20000          
+
+
+BOOL opp_auto_sort          = false
+REAL opp_allocation_multiple = 1.1
+INT opp_threads_per_block   = 512
+BOOL opp_profile_all        = false
+INT opp_gpu_direct = 0
+BOOL opp_global_move = false
+REAL grid_spacing    = 0.5
+BOOL opp_segmented_red = false
+
+# HoleFill_All Sort_All Shuffle_All Sort_Periodic Shuffle_Periodic
+STRING opp_fill = Shuffle_Periodic
+INT opp_fill_period = 4

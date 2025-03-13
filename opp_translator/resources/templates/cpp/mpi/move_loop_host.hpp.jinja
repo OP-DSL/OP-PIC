@@ -54,6 +54,10 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_
     args[{{lh.args|length}}] = opp_arg_dat(p2c_map->p2c_dat, OPP_RW); // required to make dirty or should manually make it dirty
 
     OPP_mesh_relation_data = (OPP_INT*)p2c_map->p2c_dat->data;
+#ifdef LOG_HOPS
+    OPP_move_max_hops = 0;
+    OPP_move_moreX_hops = 0;
+#endif
 
     opp_mpi_halo_exchanges{{"_grouped" if config.grouped-}}
         (set, nargs, args{{(", %d" % config.device) if config.grouped}});
@@ -79,9 +83,12 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_
             return;
         }
 
-        opp_move_status_flag = OPPX_MOVE_DONE; 
+        opp_move_status_flag = OPP_MOVE_DONE; 
         opp_move_hop_iter_one_flag = true;
 
+#ifdef LOG_HOPS
+        int hops = 0;
+#endif
         do {
             opp_c2c = &((c2c_map->map)[opp_p2c[0] * {{lh.c2c_map.dim}}]);
 
@@ -94,8 +101,15 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_
             {% endif %}
             {% endfor %}
             );
-
+#ifdef LOG_HOPS
+            hops++;
+#endif
         } while (opp_check_part_move_status(opp_p2c[0], n, set->particle_remove_count));
+
+#ifdef LOG_HOPS
+        OPP_move_max_hops = (OPP_move_max_hops < hops) ? hops : OPP_move_max_hops;
+        if (hops > X_HOPS) OPP_move_moreX_hops++;
+#endif    
     };
 
     // ----------------------------------------------------------------------------
@@ -113,16 +127,11 @@ void opp_particle_move__{{lh.kernel}}(opp_set set, opp_map c2c_map, opp_map p2c_
         const int end = OPP_iter_end;
         for (int i = start; i < end; i++) {       
 
-            opp_p2c = OPP_mesh_relation_data + i;
-            // TODO: we assume pos is in arg 0, Change this!
+            // TODO: we assume pos is in arg 0, Is there a better way?
             const opp_point* point = (const opp_point*)&(((OPP_REAL*)args[0].data)[i * {{lh.dat(lh.args[0]).dim}}]); 
 
             // check for global move, and if satisfy global move criteria, then remove the particle from current rank
-            if (opp_part_checkForGlobalMove{{lh.dat(lh.args[0]).dim}}D(set, *point, i, opp_p2c[0])) {
-                
-                set->particle_remove_count++;
-                continue;  
-            }
+            opp_part_checkForGlobalMove{{lh.dat(lh.args[0]).dim}}D(set, *point, i, OPP_mesh_relation_data[i]);
         }
 
         opp_profiler->end("GblMv_Move");

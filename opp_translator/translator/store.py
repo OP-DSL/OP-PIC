@@ -6,10 +6,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 from util import flatten, uniqueBy
+from clang.cindex import Cursor, CursorKind, SourceRange
 
-# import ops
-import op as OP
-from op import OpError as OpsError
+import opp as OPP
+from opp import OppError
 from util import ABDC, findIdx
 
 if TYPE_CHECKING:
@@ -71,7 +71,7 @@ class Type(Entity):
 @dataclass
 class Function(Entity):
     parameters: List(str) = field(default_factory=list)
-    returns: Optional[OP.Type] = None
+    returns: Optional[OPP.Type] = None
 
     def __str__(self) -> str:
         return f"Function(name='{self.name}', scope={self.scope}, depends={self.depends})"
@@ -83,14 +83,14 @@ class Program:
     ast: Any
     source: str
 
-    consts: List[OP.Const] = field(default_factory=list)
-    loops: List[OP.Loop] = field(default_factory=list)
+    consts: List[OPP.Const] = field(default_factory=list)
+    loops: List[OPP.Loop] = field(default_factory=list)
 
     entities: List[Entity] = field(default_factory=list)
 
-    sets: List[OP.Set] = field(default_factory=list)
-    maps: List[OP.Map] = field(default_factory=list)
-    dats: List[OP.Dat] = field(default_factory=list)
+    sets: List[OPP.Set] = field(default_factory=list)
+    maps: List[OPP.Map] = field(default_factory=list)
+    dats: List[OPP.Dat] = field(default_factory=list)
 
     ndim: Optional[int] = None
     soa_val: Optional[bool] = False
@@ -144,16 +144,29 @@ class Program:
         #     print(loop)          
         # for loop in self.maps:
         #     print(loop) 
+
+        # updating the loop with the consts accessed within the kernel
+        for loop in self.loops:
+            entities = self.findEntities(loop.kernel, [])
+            # TODO : Use depencies as well
+            for entity in entities:
+                for node in entity.ast.walk_preorder():
+                    if node.kind != CursorKind.DECL_REF_EXPR:
+                        continue
+                    const_id = findIdx(self.consts, lambda d: d.ptr == node.spelling)
+                    if const_id is not None:
+                        loop.addConst(self.consts[const_id])
+            loop.consts.sort(key=lambda c: c.ptr.strip())
         for loop in self.loops:
             for arg in loop.args:
-                if isinstance(arg, OP.ArgDat):
+                if isinstance(arg, OPP.ArgDat):
                     stored_dat_id = findIdx(self.dats, lambda m: m.ptr == loop.dats[arg.dat_id].ptr) 
                     if stored_dat_id is None:
                         stored_map_id = findIdx(self.maps, lambda m: m.ptr == loop.dats[arg.dat_id].ptr) 
                         if stored_map_id is not None:
                             arg.flag = False
                         else:
-                            raise OpsError(f"enrichLoopData : {arg} is not a dat nor map")
+                            raise OppError(f"enrichLoopData : {arg} is not a dat nor map")
         for loop in self.loops:
             for map in loop.maps:
                 map_stored = self.maps[findIdx(self.maps, lambda m: m.ptr == map.ptr)]         
@@ -182,16 +195,16 @@ class Program:
                         obj.loc = map_stored.loc    
                         obj.flag = False                 
                     else:
-                        raise OpsError(f"enrichLoopData : {obj} is not a dat nor map")
+                        raise OppError(f"enrichLoopData : {obj} is not a dat nor map")
             loop.iterator_set = self.sets[findIdx(self.sets, lambda m: m.name == loop.iterator_set)]
             if loop.p2c_map not in [None, "nullptr", "NULL"] :
                 loop.p2c_map = self.maps[findIdx(self.maps, lambda m: m.ptr == loop.p2c_map)]
-            elif loop.loop_type == OP.LoopType.MOVE_LOOP:
-                raise OpsError(f"enrichLoopData : {loop.name} require a valid p2c map")
+            elif loop.loop_type == OPP.LoopType.MOVE_LOOP:
+                raise OppError(f"enrichLoopData : {loop.name} require a valid p2c map")
             if loop.c2c_map not in [None, "nullptr", "NULL"] :
                 loop.c2c_map = self.maps[findIdx(self.maps, lambda m: m.ptr == loop.c2c_map)]
-            elif loop.loop_type == OP.LoopType.MOVE_LOOP:
-                raise OpsError(f"enrichLoopData : {loop.name} require a valid c2c map")
+            elif loop.loop_type == OPP.LoopType.MOVE_LOOP:
+                raise OppError(f"enrichLoopData : {loop.name} require a valid c2c map")
 
 @dataclass
 class Application:
@@ -235,14 +248,14 @@ class Application:
 
         return ptrs
     
-    def consts(self) -> List[OP.Const]:
+    def consts(self) -> List[OPP.Const]:
         consts = flatten(program.consts for program in self.programs)
         return uniqueBy(consts, lambda c: c.ptr)
 
-    def loops(self) -> List[Tuple[OP.Loop, Program]]:
+    def loops(self) -> List[Tuple[OPP.Loop, Program]]:
         return flatten(map(lambda l: (l, p), p.loops) for p in self.programs)
 
-    def uniqueLoops(self) -> List[OP.Loop]:
+    def uniqueLoops(self) -> List[OPP.Loop]:
         return uniqueBy(self.loops(), lambda m: m[0].kernel)
         for p in self.programs:
             id = findId
@@ -257,7 +270,7 @@ class Application:
             elif program.ndim == None:
                 program.ndim = self.global_dim
             elif self.global_dim != program.ndim:
-                raise OpsError(f"ndim mismatch with global dim={self.global_dim} and program dim={program.ndim} of program={program.path}")
+                raise OppError(f"ndim mismatch with global dim={self.global_dim} and program dim={program.ndim} of program={program.path}")
 
 
     def validateConst(self, lang: Lang) -> None:
@@ -266,60 +279,45 @@ class Application:
         for program in self.programs:
             for const in program.consts:
                 if const.ptr in seen_const_ptrs:
-                    raise OpsError(f"Duplicate const declaration: {const.ptr}", const.loc)
-
+                    raise OppError(f"Duplicate const declaration: {const.ptr}", const.loc)
                 seen_const_ptrs.add(const.ptr)
-
                 # if const.dim.isdigit() and int(const.dim) < 1:
-                #     raise OpsError(f"Invalid const dimension: {const.dim} of const: {const.ptr}", const.loc)
+                #     raise OppError(f"Invalid const dimension: {const.dim} of const: {const.ptr}", const.loc)
 
 
     def validateLoops(self, lang: Lang) -> None:
         for loop, Program in self.loops():
-            num_opts = len([arg for arg in loop.args if getattr(arg, "opt", False)])
-            #if num_opts > 128:
-            #    raise OpsError(f"number of optional arguments exceeds 128: {num_opts}", loop.loc)
+            # num_opts = len([arg for arg in loop.args if getattr(arg, "opt", False)])
+            # if num_opts > 128:
+            #    raise OppError(f"number of optional arguments exceeds 128: {num_opts}", loop.loc)
             for arg in loop.args:
-                if isinstance(arg, OP.ArgDat):
+                if isinstance(arg, OPP.ArgDat):
                     self.validateArgDat(arg, loop, lang)
 
-                if isinstance(arg, OP.ArgGbl):
+                if isinstance(arg, OPP.ArgGbl):
                     self.validateArgGbl(arg, loop, lang)
 
-            #self.validateKernel(loop, program, lang) TODO
 
-
-    def validateArgDat(self, arg: OP.ArgDat, loop: OP.Loop, lang: Lang) -> None:
-        valid_access_types = [
-            OP.AccessType.READ, 
-            OP.AccessType.WRITE, 
-            OP.AccessType.RW, 
-            OP.AccessType.INC
-            ]
+    def validateArgDat(self, arg: OPP.ArgDat, loop: OPP.Loop, lang: Lang) -> None:
+        valid_access_types = [OPP.AccessType.READ, OPP.AccessType.WRITE, OPP.AccessType.RW, OPP.AccessType.INC]
 
         if arg.access_type not in valid_access_types:
-            raise OpsError(f"Invalid access type for dat argument: {arg.access_type}, arg: {arg}", arg.loc)
+            raise OppError(f"Invalid access type for dat argument: {arg.access_type}, arg: {arg}", arg.loc)
 
 
-    def validateArgGbl(self, arg: OP.ArgGbl, loop: OP.Loop, lang: Lang) -> None:
+    def validateArgGbl(self, arg: OPP.ArgGbl, loop: OPP.Loop, lang: Lang) -> None:
         valid_access_types = [
-            OP.AccessType.READ, 
-            OP.AccessType.WRITE, 
-            OP.AccessType.RW, 
-            OP.AccessType.INC,
-            OP.AccessType.MIN,
-            OP.AccessType.MAX
-            ]
+            OPP.AccessType.READ, OPP.AccessType.WRITE, OPP.AccessType.RW, OPP.AccessType.INC,OPP.AccessType.MIN,OPP.AccessType.MAX]
 
         if arg.access_type not in valid_access_types:
-            raise OpsError(f"Invalid access type for gbl argument: {arg.access_type}", arg.loc)
+            raise OppError(f"Invalid access type for gbl argument: {arg.access_type}", arg.loc)
 
-        if arg.access_type in [OP.AccessType.INC, OP.AccessType.MIN, OP.AccessType.MAX] and arg.typ not in \
-            [OP.Float(64), OP.Float(32), OP.Float(16), OP.Int(True, 32), OP.Int(False, 32), OP.Bool]:
-            raise OpsError(f"Invalid access type for reduced gbl argument: {arg.access_type}", arg.loc)
+        if arg.access_type in [OPP.AccessType.INC, OPP.AccessType.MIN, OPP.AccessType.MAX] and arg.typ not in \
+            [OPP.Float(64), OPP.Float(32), OPP.Float(16), OPP.Int(True, 32), OPP.Int(False, 32), OPP.Bool]:
+            raise OppError(f"Invalid access type for reduced gbl argument: {arg.access_type}", arg.loc)
 
         if str(arg.dim).isdigit() and int(str(arg.dim)) < 1:
-            raise OpsError(f"Invalid gbl argument dimension: {arg.dim}", arg.loc)
+            raise OppError(f"Invalid gbl argument dimension: {arg.dim}", arg.loc)
  
 
 

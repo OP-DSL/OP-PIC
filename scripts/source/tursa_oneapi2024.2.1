@@ -1,0 +1,48 @@
+#!/bin/bash
+
+module purge
+module load /mnt/lustre/tursafs1/home/y07/shared/tursa-modules/setup-env
+
+source /home/y07/shared/utils/core/spack/share/spack/setup-env.sh
+
+export OPP=$HOME/phd/OP-PIC
+export OPP_INSTALL_PATH=$OPP/opp_install
+export OPP_TRANSLATOR=$OPP/opp_translator/translator
+export OPP_PATH=$OPP/opp_lib
+
+export CC_COMPILER=icpx
+export MPI_COMPILER=mpicxx
+
+. /home/dp360/dp360/dc-lant1/.spack/opt/spack/linux-rhel8-zen2/gcc-12.2.0/intel-oneapi-compilers-2024.2.1-p25odcwhcvz5ucvps6ort6hfx2kxwioo/setvars.sh --include-intel-llvm
+
+export MPICH_CXX=$(spack location -i intel-oneapi-compilers@2024.2.1)/compiler/2024.2/bin/icpx
+export MPICH_CC=$(spack location -i intel-oneapi-compilers@2024.2.1)/compiler/2024.2/bin/icx
+spack load intel-oneapi-dpct@2024.2.1
+
+export CPPFLAGS_ADD="-fp-model precise"
+# export SYCLFLAGS_ADD="-fp-model precise -fsycl-targets=nvptx64-nvidia-cuda -Xsycl-target-backend=nvptx64-nvidia-cuda --cuda-gpu-arch=sm_80 "
+# export SYCLFLAGS_ADD=" -fsycl-targets=spir64_x86_64 "
+export SYCLFLAGS_ADD="-fp-model precise -fsycl-targets=nvptx64-nvidia-cuda -Xsycl-target-backend=nvptx64-nvidia-cuda --cuda-gpu-arch=sm_80 -Xcuda-ptxas --maxrregcount=128"
+
+module load cuda/12.3 
+export CUDA_INSTALL_PATH=/mnt/lustre/tursafs1/apps/cuda/12.3
+export LD_LIBRARY_PATH=$CUDA_INSTALL_PATH/targets/x86_64-linux/lib/stubs:$LD_LIBRARY_PATH
+export LIBRARY_PATH=$CUDA_INSTALL_PATH/targets/x86_64-linux/lib/stubs:$LIBRARY_PATH
+export NVCCFLAGS_ADD='-gencode arch=compute_80,code=sm_80'
+export CUDA_ARCH=80
+
+export PETSC_INSTALL_PATH=$HOME/lib_install/petsc-3.22.3-oneapi-2024.2.1_mpi
+export LD_LIBRARY_PATH=$PETSC_INSTALL_PATH/lib:$LD_LIBRARY_PATH
+
+export HDF5_INSTALL_PATH=$HOME/lib_install/hdf5-1.14.3_oneapi-2024.2.1_mpi
+export LD_LIBRARY_PATH=$HDF5_INSTALL_PATH/lib:$LD_LIBRARY_PATH
+
+# # How SYCL compilers were installed ----------------------------------------------
+# module load gcc/12.2.0
+# source /home/y07/shared/utils/core/spack/share/spack/setup-env.sh
+# spack install intel-oneapi-compilers@2024.2.1 %gcc@12.2.0
+# spack load intel-oneapi-compilers
+# spack compiler find
+# spack unload intel-oneapi-compilers
+# sh oneapi-for-nvidia-gpus-2024.2.1-cuda-12.0-linux.sh --install-dir /home/dp360/dp360/dc-lant1/.spack/opt/spack/linux-rhel8-zen2/gcc-12.2.0/intel-oneapi-compilers-2024.2.1-p25odcwhcvz5ucvps6ort6hfx2kxwioo
+# spack install intel-oneapi-dpct@2024.2.1 %oneapi@2024.2.1

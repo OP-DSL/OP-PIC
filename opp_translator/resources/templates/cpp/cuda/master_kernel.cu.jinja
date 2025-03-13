@@ -1,7 +1,7 @@
 {% extends "cpp/master_kernel.cpp.jinja" %}
 
 {% block includes %}
-{{super()}}
+{{super()}}#include "device_kernels/cuda_inline_kernels.h"
     {% if user_types is not none %}
 #ifndef OP_FUN_PREFIX
 #define OP_FUN_PREFIX __host__ __device__
@@ -11,17 +11,17 @@
 
 {% block const_decls %}
     {% for const in app.consts() %}
+{{const.typ}} {{const.ptr}}[{{const.dim}}];
+    {% endfor %}
+
+    {% for const in app.consts() %}
 __constant__ {{const.typ}} {{const.ptr}}_d[{{const.dim}}];
     {% endfor %}
-    
-__constant__ int OPP_cells_set_size_d;
-int OPP_cells_set_size;
-
-__constant__ int OPP_comm_iteration_d;
 {% endblock %}
 
 {% block const_decl_func %}
     {% call(const) const_decl_func("") %}
-cutilSafeCall(cudaMemcpyToSymbol({{const.ptr}}_d, data, dim * size));
+OPP_DEV_CHECK(cudaMemcpyToSymbol({{const.ptr}}_d, data, dim * size));
+        std::memcpy(&{{const.ptr}}, data, (size*dim));
     {%- endcall %}
 {% endblock %}

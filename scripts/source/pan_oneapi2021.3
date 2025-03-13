@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# salloc -p v100 --time 1:00:00
+
 module purge
 
 export OPP_COMPILER=intel
@@ -8,7 +10,7 @@ export OPP_INSTALL_PATH=$OPP/opp_install
 export OPP_TRANSLATOR=$OPP/opp_translator/translator
 export OPP_PATH=$OPP/opp_lib
 
-export PARMETIS_INSTALL_PATH=/home/zl/libs/parmetis-4.0.3/
+export PARMETIS_INSTALL_PATH=/home/zl/lib
 export LD_LIBRARY_PATH=$PARMETIS_INSTALL_PATH/lib:$PARMETIS_INSTALL_PATH/metis/lib:/home/zl/libs/metis/5.1.0/lib:$LD_LIBRARY_PATH
 
 export HDF5_INSTALL_PATH=/opt/hdf5/1.8.18/intel/18.0/impi/2018
@@ -56,7 +58,8 @@ elif [ "$(hostname)" == 'demos' ]; then
   export CUDA_VISIBLE_DEVICES=0
   echo $NV_ARCH $(hostname)
   unset CUDA_HOME
-
+  export CUDA_ARCH=90
+  
   export PETSC_INSTALL_PATH=/home/zl/lib_install/petsc-3.20.5-nvhpc23.7-mpi_demos
 else
   echo The machine not configured, PETSC_INSTALL_PATH and some other variables may be missing!
@@ -73,6 +76,8 @@ if [ "$(hostname)" != 'demos' ]; then
   echo "Source intel compilers"
   source /opt/intel/oneapi/2021.3/setvars.sh
   
+  export CPPFLAGS_ADD="-fp-model precise"
+
   # source /opt/intel/oneapi/2024.0/oneapi-vars.sh
   export MPI_INSTALL_PATH=/opt/intel/oneapi/2021.3/mpi/latest
 

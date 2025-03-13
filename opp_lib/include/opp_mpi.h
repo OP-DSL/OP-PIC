@@ -46,9 +46,6 @@ void opp_mpi_halo_wait_all(int nargs, opp_arg *args);
 void opp_exchange_double_indirect_reductions(opp_dat dat, opp_reduc_comm reduc_comm);
 void opp_complete_double_indirect_reductions(opp_dat dat);
 
-void cleanSendRecvBuffers(opp_set set);
-
-
 inline void opp_mpi_reduce(opp_arg *args, double *data) 
 {
     opp_mpi_reduce_double(args, data);
@@ -59,63 +56,53 @@ inline void opp_mpi_reduce(opp_arg *args, int *data)
     opp_mpi_reduce_int(args, data);
 }
 
-
-enum oppx_move_status : char
-{
-    OPPX_MOVE_DONE = 0,
-    OPPX_NEED_MOVE,
-    OPPX_NEED_REMOVE,
-};
-
 extern char opp_move_status_flag;
 extern bool opp_move_hop_iter_one_flag;
 extern OPP_INT* opp_p2c;
 extern OPP_INT* opp_c2c;
 
-#define OPP_PARTICLE_MOVE_DONE { opp_move_status_flag = OPPX_MOVE_DONE; }
-#define OPP_PARTICLE_NEED_MOVE { opp_move_status_flag = OPPX_NEED_MOVE; }
-#define OPP_PARTICLE_NEED_REMOVE { opp_move_status_flag = OPPX_NEED_REMOVE; }
+#define OPP_PARTICLE_MOVE_DONE { opp_move_status_flag = OPP_MOVE_DONE; }
+#define OPP_PARTICLE_NEED_MOVE { opp_move_status_flag = OPP_NEED_MOVE; }
+#define OPP_PARTICLE_NEED_REMOVE { opp_move_status_flag = OPP_NEED_REMOVE; }
 #define OPP_DO_ONCE (opp_move_hop_iter_one_flag)
-#define OPP_MOVE_RESET_FLAGS { opp_move_status_flag = OPPX_MOVE_DONE; opp_move_hop_iter_one_flag = true; }
+#define OPP_MOVE_RESET_FLAGS { opp_move_status_flag = OPP_MOVE_DONE; opp_move_hop_iter_one_flag = true; }
 
 //*************************************************************************************************
 inline bool opp_check_part_move_status(const OPP_INT map0idx, const OPP_INT particle_index, int& remove_count) 
 {
     opp_move_hop_iter_one_flag = false;
 
-    if (opp_move_status_flag == OPPX_MOVE_DONE)
-    {
+    if (opp_move_status_flag == OPP_MOVE_DONE) {
         return false;
     }
-    else if (opp_move_status_flag == OPPX_NEED_REMOVE)
-    {
+    else if (opp_move_status_flag == OPP_NEED_REMOVE) {
         remove_count += 1;
         OPP_mesh_relation_data[particle_index] = MAX_CELL_INDEX;
 
         return false;
     }
-    else if (map0idx >= OPP_part_cells_set_size)
-    {
+    else if (map0idx >= OPP_part_cells_set_size) {
         // map0idx cell is not owned by the current mpi rank (it is in the import exec halo region), need to communicate
         opp_move_part_indices.push_back(particle_index);
         return false;
     }
 
-    // map0idx is an own cell and opp_move_status_flag == OPPX_NEED_MOVE
+    // map0idx is an own cell and opp_move_status_flag == OPP_NEED_MOVE
     return true;
 }
 
 //*******************************************************************************
 // returns true, if the current particle needs to be removed from the rank
 inline bool opp_part_checkForGlobalMove_util(opp_set set, const opp_point& point, const int partIndex, int& cellIdx, 
-                const size_t structCellIdx) {         
-    
-    if (structCellIdx == MAX_CELL_INDEX) { // This happens when point is out of the unstructured mesh
+                const size_t structCellIdx) 
+{             
+    if (structCellIdx == MAX_CELL_INDEX || structCellIdx == OPP_OUT_OF_SAVED_DOMAIN) { // This happens when point is out of the unstructured mesh
         if (OPP_DBG)
             opp_printf("opp_part_checkForGlobalMove", 
             "Remove %d [Struct cell index invalid - strCellIdx:%zu] [%2.16lE, %2.16lE, %2.16lE]", 
                 partIndex, structCellIdx, point.x, point.y, point.z);
         cellIdx = MAX_CELL_INDEX;
+        set->particle_remove_count++;
         return true;
     }
 
@@ -128,9 +115,10 @@ inline bool opp_part_checkForGlobalMove_util(opp_set set, const opp_point& point
         if (structCellRank == MAX_CELL_INDEX) {
             if (OPP_DBG)
                 opp_printf("opp_part_checkForGlobalMove", 
-                "Remove %d [Rank invalid - strCellRank:%d loclCellIdx:%zu strCellIdx:%zu] [%2.16lE, %2.16lE, %2.16lE]", 
+                "Remove %d [Rank invalid - cellRank:%d loclCellIdx:%zu strCellIdx:%zu] [%2.16lE, %2.16lE, %2.16lE]", 
                     partIndex, structCellRank, cellMapper->findClosestCellIndex(structCellIdx), structCellIdx, 
                     point.x, point.y, point.z);
+            set->particle_remove_count++;
             cellIdx = MAX_CELL_INDEX;
             return true;
         }
@@ -141,8 +129,9 @@ inline bool opp_part_checkForGlobalMove_util(opp_set set, const opp_point& point
         if (globalCellIndex == MAX_CELL_INDEX) {
             if (OPP_DBG)
                 opp_printf("opp_part_checkForGlobalMove", 
-                "Remove %d [CellIdx invalid - strCellRank:%d loclCellIdx:%zu strCellIdx:%zu] [%2.16lE, %2.16lE, %2.16lE]", 
+                "Remove %d [CellIdx invalid - cellRank:%d loclCellIdx:%zu strCellIdx:%zu] [%2.16lE, %2.16lE, %2.16lE]", 
                     partIndex, structCellRank, globalCellIndex, structCellIdx, point.x, point.y, point.z);
+            set->particle_remove_count++;
             cellIdx = MAX_CELL_INDEX;
             return true;
         }
@@ -153,6 +142,7 @@ inline bool opp_part_checkForGlobalMove_util(opp_set set, const opp_point& point
         // if (OPP_DBG)
         //     opp_printf("opp_part_checkForGlobalMove", "Mark part %d [Move to rank %d gblCellIdx %d]", 
         //         partIndex, structCellRank, globalCellIndex);
+        set->particle_remove_count++;
         cellIdx = MAX_CELL_INDEX;
         return true;
     }
@@ -174,14 +164,16 @@ inline bool opp_part_checkForGlobalMove_util(opp_set set, const opp_point& point
 
 //*******************************************************************************
 // returns true, if the current particle needs to be removed from the rank
-inline bool opp_part_checkForGlobalMove2D(opp_set set, const opp_point& point, const int partIndex, int& cellIdx) {
+inline bool opp_part_checkForGlobalMove2D(opp_set set, const opp_point& point, const int partIndex, int& cellIdx) 
+{
     const size_t structCellIdx = cellMapper->findStructuredCellIndex2D(point);
     return opp_part_checkForGlobalMove_util(set, point, partIndex, cellIdx, structCellIdx);
 }
 
 //*******************************************************************************
 // returns true, if the current particle needs to be removed from the rank
-inline bool opp_part_checkForGlobalMove3D(opp_set set, const opp_point& point, const int partIndex, int& cellIdx) {
+inline bool opp_part_checkForGlobalMove3D(opp_set set, const opp_point& point, const int partIndex, int& cellIdx) 
+{
     const size_t structCellIdx = cellMapper->findStructuredCellIndex3D(point);
     return opp_part_checkForGlobalMove_util(set, point, partIndex, cellIdx, structCellIdx);
 }

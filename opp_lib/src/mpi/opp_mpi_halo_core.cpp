@@ -112,7 +112,7 @@ void __opp_halo_create()
 
     int cap_s = 1000; // keep track of the temp array capacities
 
-    for (int s = 0; s < (int)opp_sets.size(); s++) // for each set
+    for (size_t s = 0; s < opp_sets.size(); s++) // for each set
     { 
         opp_set set = opp_sets[s];
 
@@ -125,7 +125,7 @@ void __opp_halo_create()
 
         for (int e = 0; e < set->size; e++) // for each elment of this set
         {      
-            for (int m = 0; m < (int)opp_maps.size(); m++) // for each maping table
+            for (size_t m = 0; m < opp_maps.size(); m++) // for each maping table
             { 
                 opp_map map = opp_maps[m];
 
@@ -181,7 +181,7 @@ void __opp_halo_create()
         halo_list list = OPP_export_exec_list[set->index];
 
         find_neighbors_set(list, neighbors, sizes, &ranks_size, my_rank, comm_size, OPP_MPI_WORLD);
-        MPI_Request request_send[list->ranks_size];
+        std::vector<MPI_Request> request_send(list->ranks_size);
 
         int *rbuf, cap = 0, index = 0;
 
@@ -209,7 +209,7 @@ void __opp_halo_create()
             opp_host_free(rbuf);
         }
 
-        MPI_Waitall(list->ranks_size, request_send, MPI_STATUSES_IGNORE);
+        MPI_Waitall(list->ranks_size, request_send.data(), MPI_STATUSES_IGNORE);
 
         // create import lists
         halo_list h_list = (halo_list)opp_host_malloc(sizeof(halo_list_core));
@@ -225,7 +225,7 @@ void __opp_halo_create()
         halo_list i_list = OPP_import_exec_list[map->from->index];
         halo_list e_list = OPP_export_exec_list[map->from->index];
 
-        MPI_Request request_send[e_list->ranks_size];
+        std::vector<MPI_Request> request_send(e_list->ranks_size);
 
         // prepare bits of the mapping tables to be exported
         int **sbuf = (int **)opp_host_malloc(e_list->ranks_size * sizeof(int *));
@@ -256,7 +256,7 @@ void __opp_halo_create()
                 map->dim * i_list->sizes[i], MPI_INT, i_list->ranks[i], m, OPP_MPI_WORLD, MPI_STATUS_IGNORE);
         }
 
-        MPI_Waitall(e_list->ranks_size, request_send, MPI_STATUSES_IGNORE);
+        MPI_Waitall(e_list->ranks_size, request_send.data(), MPI_STATUSES_IGNORE);
         
         for (int i = 0; i < e_list->ranks_size; i++)
             opp_host_free(sbuf[i]);
@@ -365,7 +365,7 @@ void __opp_halo_create()
         find_neighbors_set(list, neighbors, sizes, &ranks_size, my_rank, comm_size,
                         OPP_MPI_WORLD);
 
-        MPI_Request request_send[list->ranks_size];
+        std::vector<MPI_Request> request_send(list->ranks_size);
         int *rbuf, cap = 0, index = 0;
 
         for (int i = 0; i < list->ranks_size; i++) 
@@ -388,7 +388,7 @@ void __opp_halo_create()
             opp_host_free(rbuf);
         }
 
-        MPI_Waitall(list->ranks_size, request_send, MPI_STATUSES_IGNORE);
+        MPI_Waitall(list->ranks_size, request_send.data(), MPI_STATUSES_IGNORE);
 
         halo_list h_list = (halo_list)opp_host_malloc(sizeof(halo_list_core));
         create_nonexec_export_list(set, temp, h_list, index, neighbors, sizes, ranks_size, comm_size, my_rank);
@@ -414,7 +414,7 @@ void __opp_halo_create()
 
             if (compare_sets(set, dat->set) == 1) // if this data array is defined on this set
             { 
-                MPI_Request request_send[e_list->ranks_size];
+                std::vector<MPI_Request> request_send(e_list->ranks_size);
 
                 // prepare execute set element data to be exported
                 char **sbuf = (char **)opp_host_malloc(e_list->ranks_size * sizeof(char *));
@@ -446,7 +446,7 @@ void __opp_halo_create()
                             OPP_MPI_WORLD, MPI_STATUS_IGNORE);
                 }
 
-                MPI_Waitall(e_list->ranks_size, request_send, MPI_STATUSES_IGNORE);
+                MPI_Waitall(e_list->ranks_size, request_send.data(), MPI_STATUSES_IGNORE);
                 
                 for (int i = 0; i < e_list->ranks_size; i++)
                     opp_host_free(sbuf[i]);
@@ -476,7 +476,7 @@ void __opp_halo_create()
             if (compare_sets(set, dat->set) == 1)  // if this data array is defined on this set
             {
                 // printf("on rank %d, The data array is %10s\n",my_rank,dat->name);
-                MPI_Request request_send[e_list->ranks_size];
+                std::vector<MPI_Request> request_send(e_list->ranks_size);
 
                 // prepare non-execute set element data to be exported
                 char **sbuf = (char **)opp_host_malloc(e_list->ranks_size * sizeof(char *));
@@ -507,7 +507,7 @@ void __opp_halo_create()
                         OPP_MPI_WORLD, MPI_STATUS_IGNORE);
                 }
 
-                MPI_Waitall(e_list->ranks_size, request_send, MPI_STATUSES_IGNORE);
+                MPI_Waitall(e_list->ranks_size, request_send.data(), MPI_STATUSES_IGNORE);
                 for (int i = 0; i < e_list->ranks_size; i++)
                     opp_host_free(sbuf[i]);
                 opp_host_free(sbuf);

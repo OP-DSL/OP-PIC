@@ -1,0 +1,28 @@
+# Simulation parameters
+INT num_steps = 500
+INT nx = 256
+INT ny = 256
+REAL dt = 0.5
+REAL cell_width = 0.5
+INT npart_per_cell = 1000
+BOOL verify_particles = true
+
+# System parameters
+BOOL opp_auto_sort          = false
+REAL opp_allocation_multiple = 1.1
+INT opp_threads_per_block   = 512
+BOOL opp_profile_all        = false
+INT opp_gpu_direct = 0
+
+BOOL opp_global_move = false
+REAL grid_spacing    = 0.5
+BOOL opp_dh_data_generate = false
+STRING opp_dh_mesh_folder  = /home/zl/phd/box_mesh_gen/neso_advection/dh_mesh_scaling/
+# Use opp_dh_data_generate = true and OPP_DH_DATA_DUMP=1 in args to dump the structured mesh
+
+BOOL opp_segmented_red = false
+INT gpu_reduction_arrays = 16
+
+# HoleFill_All Sort_All Shuffle_All Sort_Periodic Shuffle_Periodic
+STRING opp_fill = HoleFill_All
+INT opp_fill_period = 4

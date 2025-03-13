@@ -133,7 +133,9 @@ void opp_exchange_double_indirect_reductions(opp_dat dat, opp_reduc_comm reduc_c
 
     double total_send_size = 0.0;
 
-    // send reduction contributions related to export non-execute lists
+    // TODO : Include execute as well
+
+    // send reduction contributions related to import non-execute lists
     int init = (dat->set->size + dat->set->exec_size) * dat->size;
     for (int i = 0; i < imp_nonexec_list->ranks_size; i++) 
     { 
@@ -142,7 +144,9 @@ void opp_exchange_double_indirect_reductions(opp_dat dat, opp_reduc_comm reduc_c
         size_t send_size    = (size_t)dat->size * imp_nonexec_list->sizes[i];
         MPI_Request* req = &(reduc_buf->s_req[reduc_buf->s_num_req++]);
 
-        if (OPP_DBG) opp_printf("opp_exchange_double_indirect_reductions", "SEND SIZE %zu bytes", send_size);
+        if (OPP_DBG) 
+            opp_printf("opp_exchange_double_indirect_reductions", "SEND SIZE %zu bytes to %d", 
+                send_size, send_rank);
 
         MPI_Isend(send_buf, send_size, MPI_CHAR, send_rank, dat->index, OPP_MPI_WORLD, req);
 
@@ -159,7 +163,9 @@ void opp_exchange_double_indirect_reductions(opp_dat dat, opp_reduc_comm reduc_c
         size_t recv_size    = (size_t)dat->size * exp_nonexec_list->sizes[i];
         MPI_Request* req = &(reduc_buf->r_req[reduc_buf->r_num_req++]);
 
-        if (OPP_DBG) opp_printf("opp_exchange_double_indirect_reductions", "RECEIVE SIZE %zu bytes", recv_size);
+        if (OPP_DBG) 
+            opp_printf("opp_exchange_double_indirect_reductions", "RECEIVE SIZE %zu bytes from %d", 
+                recv_size, recv_rank);
 
         MPI_Irecv(recv_buf, recv_size, MPI_CHAR, recv_rank, dat->index, OPP_MPI_WORLD, req);
     }
@@ -203,8 +209,9 @@ void opp_complete_double_indirect_reductions(opp_dat dat)
 {
     if (dat->reduc_comm == OPP_Reduc_NO_Comm)
     {
-        if (OPP_DBG) opp_printf("opp_complete_double_indirect_reductions", 
-                        "No reduction communication in flight for  dat %s", dat->name);
+        //if (OPP_DBG) 
+        opp_printf("opp_complete_double_indirect_reductions", 
+            "No reduction communication in flight for dat %s", dat->name);
         return;
     }
 

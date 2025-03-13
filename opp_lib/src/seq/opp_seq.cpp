@@ -31,8 +31,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <opp_seq.h>
-
-opp_move_var move_var;
+#include "opp_increase_part_count.cpp"
+#include "opp_particle_mover.cpp"
 
 char opp_move_status_flag = OPPX_MOVE_DONE;
 bool opp_move_hop_iter_one_flag = true;
@@ -90,22 +90,13 @@ opp_map opp_decl_map(opp_set from, opp_set to, int dim, int *imap, char const *n
 }
 
 //****************************************
-opp_dat opp_decl_mesh_dat(opp_set set, int dim, opp_data_type dtype, void *data, char const *name)
+opp_dat opp_decl_dat(opp_set set, int dim, opp_data_type dtype, void *data, char const *name)
 {
     std::string type = "";
     int size = -1;
     getDatTypeSize(dtype, type, size);
 
     return opp_decl_dat_core(set, dim, type.c_str(), size, (char*)data, name);
-}
-
-//****************************************
-opp_dat opp_decl_dat(opp_set set, int dim, opp_data_type dtype, void *data, char const *name, bool cell_index)
-{
-    if (set->is_particle) 
-        return opp_decl_part_dat(set, dim, dtype, data, name, cell_index);
-    else
-        return opp_decl_mesh_dat(set, dim, dtype, data, name);
 }
 
 //****************************************
@@ -134,6 +125,16 @@ opp_dat opp_decl_dat_txt(opp_set set, int dim, opp_data_type dtype, const char* 
     opp_host_free(dat_data);
 
     return dat;
+}
+
+//****************************************
+opp_set opp_decl_particle_set(int size, char const *name, opp_set cells_set)
+{
+    return opp_decl_particle_set_core(size, name, cells_set);
+}
+opp_set opp_decl_particle_set(char const *name, opp_set cells_set)
+{
+    return opp_decl_particle_set_core(name, cells_set);
 }
 
 //****************************************
@@ -204,118 +205,19 @@ opp_arg opp_arg_dat(opp_map data_map, int idx, opp_map map, opp_map p2c_map, opp
     return opp_arg_dat_core(data_map, idx, map, p2c_map->p2c_dat, acc);
 }
 
-//****************************************
-// template <class T> opp_arg opp_arg_gbl(T *data, int dim, char const *typ, opp_access acc);
-opp_arg opp_arg_gbl(double *data, int dim, char const *typ, opp_access acc)
-{
-    return opp_arg_gbl_core(data, dim, typ, acc);
-}
-opp_arg opp_arg_gbl(int *data, int dim, char const *typ, opp_access acc)
-{
-    return opp_arg_gbl_core(data, dim, typ, acc);
-}
-opp_arg opp_arg_gbl(const bool *data, int dim, char const *typ, opp_access acc)
-{
-    return opp_arg_gbl_core(data, dim, typ, acc);
-}
-
-//****************************************
-opp_set opp_decl_particle_set(int size, char const *name, opp_set cells_set)
-{
-    return opp_decl_particle_set_core(size, name, cells_set);
-}
-opp_set opp_decl_particle_set(char const *name, opp_set cells_set)
-{
-    return opp_decl_particle_set_core(name, cells_set);
-}
-
-//****************************************
-opp_dat opp_decl_part_dat(opp_set set, int dim, opp_data_type dtype, void *data, char const *name, bool cell_index)
-{
-    std::string type = "";
-    int size = -1;
-    getDatTypeSize(dtype, type, size);
-
-    return opp_decl_particle_dat_core(set, dim, type.c_str(), size, (char*)data, name, cell_index);
-}
-
-//****************************************
-opp_dat opp_decl_particle_dat_txt(opp_set set, int dim, opp_data_type dtype, const char* file_name, char const *name, bool cell_index)
-{
-    std::string type = "";
-    int size = -1;
-    getDatTypeSize(dtype, type, size);
-
-    char* dat_data = (char*)opp_load_from_file_core(file_name, set->size, dim, type.c_str(), size);
-
-    opp_dat dat = opp_decl_particle_dat_core(set, dim, type.c_str(), size, dat_data, name, cell_index);
-
-    opp_host_free(dat_data);
-
-    return dat;
-}
-
-//****************************************
-void opp_increase_particle_count(opp_set particles_set, const int num_particles_to_insert)
-{
-    if (!opp_increase_particle_count_core(particles_set, num_particles_to_insert))
-    {
-        opp_printf("opp_increase_particle_count", "Error: opp_increase_particle_count_core failed for particle set [%s]", particles_set->name);
-        exit(-1);        
-    }
-}
-
-//****************************************
-void opp_inc_part_count_with_distribution(opp_set particles_set, int num_particles_to_insert, opp_dat part_dist, bool calc_new)
-{
-    if (OPP_DBG) opp_printf("opp_inc_part_count_with_distribution", "num_particles_to_insert [%d]", num_particles_to_insert);
-
-    if (!opp_inc_part_count_with_distribution_core(particles_set, num_particles_to_insert, part_dist))
-    {
-        opp_printf("opp_inc_part_count_with_distribution", "Error: opp_inc_part_count_with_distribution_core failed for particle set [%s]", particles_set->name);
-        opp_abort("opp_inc_part_count_with_distribution_core");        
-    }
-}
-
-//****************************************
-void opp_reset_num_particles_to_insert(opp_set set)
-{
-    opp_reset_num_particles_to_insert_core(set);
-}
-
-//****************************************
-void opp_mark_particle_to_remove(opp_set set, int particle_index)
-{
-    opp_mark_particle_to_remove_core(set, particle_index);
-}
-
-//****************************************
-void opp_remove_marked_particles_from_set(opp_set set)
-{
-    opp_remove_marked_particles_from_set_core(set);
-}
-void opp_remove_marked_particles_from_set(opp_set set, std::vector<int>& idx_to_remove)
-{
-    opp_remove_marked_particles_from_set_core(set, idx_to_remove);
-}
-
-//****************************************
-void opp_particle_sort(opp_set set)
-{ 
-    opp_particle_sort_core(set);
-}
 
 //****************************************
 void opp_print_dat_to_txtfile(opp_dat dat, const char *file_name_prefix, const char *file_name_suffix)
 {
-    std::string prefix = std::string(file_name_prefix) + "_s";
+    std::string prefix = std::string(file_name_prefix) + "_seq";
     opp_print_dat_to_txtfile_core(dat, prefix.c_str(), file_name_suffix);
 }
 
 //****************************************
 void opp_print_map_to_txtfile(opp_map map, const char *file_name_prefix, const char *file_name_suffix)
 {
-    opp_print_map_to_txtfile_core(map, file_name_prefix, file_name_suffix);
+    std::string prefix = std::string(file_name_prefix) + "_seq";
+    opp_print_map_to_txtfile_core(map, prefix.c_str(), file_name_suffix);
 }
 
 //****************************************
@@ -325,48 +227,9 @@ void opp_dump_dat(opp_dat dat)
 }
 
 //****************************************
-void opp_init_particle_move(opp_set set, int nargs, opp_arg *args)
-{ 
-    opp_init_particle_move_core(set);
-
-    if (OPP_comm_iteration == 0)
-    {
-        OPP_iter_start = 0;
-        OPP_iter_end   = set->size;          
-    }
-
-    OPP_mesh_relation_data = ((int *)set->mesh_relation_dat->data); 
-}
-
-//****************************************
-void opp_mark_particle_to_move(opp_set set, int particle_index, int move_status)
-{
-    // Can fill the holes here, since there could be removed particles
-    opp_mark_particle_to_move_core(set, particle_index, move_status);
-}
-
-//****************************************
-bool opp_finalize_particle_move(opp_set set)
-{ 
-    opp_finalize_particle_move_core(set);
-
-    if (OPP_auto_sort == 1)
-    {
-        if (OPP_DBG) printf("\topp_finalize_particle_move auto sorting particle set [%s]\n", set->name);
-        opp_particle_sort(set);
-    }
-
-    // in seq, no need to iterate the communication loop
-    return false;
-}
-
-//****************************************
 void opp_reset_dat_impl(opp_dat dat, char* val, opp_reset reset)
 {
-    int set_size = dat->set->size;
-
-    for (int i = 0; i < set_size; i++)
-    {
+    for (size_t i = 0; i < (size_t)dat->set->size; i++) {
         memcpy(dat->data + i * dat->size, val, dat->size);
     }
 }
@@ -378,95 +241,24 @@ int opp_mpi_halo_exchanges_grouped(opp_set set, int nargs, opp_arg *args, Device
 }
 
 //****************************************
+void opp_mpi_force_halo_update_if_dirty(opp_set set, std::vector<opp_dat> dats, DeviceType device) 
+{
+    // Nothing to execute here
+}
+
+//****************************************
 void opp_mpi_halo_wait_all(int nargs, opp_arg *args)
 {
     // Nothing to execute here
 }
-
-//****************************************
-void opp_init_double_indirect_reductions(int nargs, opp_arg *args)
-{
-    // Nothing to execute here
-}
-
-//****************************************
-void opp_exchange_double_indirect_reductions(int nargs, opp_arg *args)
-{
-    // Nothing to execute here
-}
-
-
-void opp_complete_double_indirect_reductions(int nargs, opp_arg *args)
-{
-    // Nothing to execute here
-}
-
-//****************************************
-bool opp_part_check_status(opp_move_var& m, int map0idx, opp_set set, 
-    int particle_index, int& remove_count, int thread)
-{
-    m.iteration_one = false;
-
-    if (m.move_status == OPP_MOVE_DONE)
-    {
-        return false;
-    }
-    else if (m.move_status == OPP_NEED_REMOVE)
-    {
-        remove_count += 1;
-        OPP_mesh_relation_data[particle_index] = MAX_CELL_INDEX;
-
-        return false;
-    }
-
-    return true;
-}
-
-//****************************************
-opp_move_var opp_get_move_var(int thread)
-{
-    move_var.move_status = OPP_MOVE_DONE;
-    move_var.iteration_one = true;
-
-    // no perf improvement by using a buffered move var, could create a new here instead
-    
-    return move_var;
-}
-
-//*******************************************************************************
-// Copy a dat from host to device
-void opp_upload_dat(opp_dat dat) {}
-
-//*******************************************************************************
-// Copy a dat from device to host
-void opp_download_dat(opp_dat dat) {}
-
-//*******************************************************************************
-// Copy all dats of the set from device to host
-void opp_download_particle_set(opp_set particles_set, bool force_download) {}
-
-//*******************************************************************************
-// Copy all dats of the set from host to device
-void opp_upload_particle_set(opp_set particles_set, bool realloc) {}
 
 //*******************************************************************************
 void opp_colour_cartesian_mesh(const int ndim, std::vector<int> cell_counts, opp_dat cell_index, 
                             const opp_dat cell_colors, const int cell_ghosts) {}
 
 //*******************************************************************************
-void* opp_host_malloc(size_t size)
-{
-    return malloc(size);
-}
-
-//*******************************************************************************
-void* opp_host_realloc(void* ptr, size_t new_size)
-{
-    return realloc(ptr, new_size);
-}
-
-//*******************************************************************************
-void opp_host_free(void* ptr)
-{
-    free(ptr);
-}
+// Below API only for GPU backends
+void opp_upload_dat(opp_dat dat) {}
+void opp_download_dat(opp_dat dat) {}
+void opp_download_particle_set(opp_set particles_set, bool force_download) {}
+void opp_upload_particle_set(opp_set particles_set, bool realloc) {}

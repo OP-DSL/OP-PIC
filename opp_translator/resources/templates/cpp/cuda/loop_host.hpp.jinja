@@ -140,22 +140,26 @@ __constant__ OPP_INT opp_k{{kernel_idx}}_dat{{dat.id}}_stride_d;
 __constant__ OPP_INT opp_k{{kernel_idx}}_map{{map.id}}_stride_d;
     {% endfor %}
 
-{% if lh is indirect and lh.args|dat|indirect|reduction|length > 0 and config.seg_red %}
+    {% if lh is indirect and lh.args|dat|indirect|reduction|length > 0 and config.seg_red %}
 OPP_INT opp_k{{kernel_idx}}_sr_set_stride = -1;
 __constant__ OPP_INT opp_k{{kernel_idx}}_sr_set_stride_d;
-{% endif%}
+    {% endif%}
 
-{% for arg in lh.args|dat|indirect|reduction|not_already_mapped(lh) if config.seg_red %}
+    {% for arg in lh.args|dat|indirect|reduction|not_already_mapped(lh) if config.seg_red %}
 thrust::device_vector<OPP_INT> sr_dat{{lh.dat(arg).id}}_keys_dv;
 thrust::device_vector<{{lh.dat(arg).typ}}> sr_dat{{lh.dat(arg).id}}_values_dv;
-{% endfor %}
+    {% endfor %}
 {% endblock %}
 
 {% macro atomic_kernel_wrapper() -%}
 __global__ void opp_dev_{{lh.kernel}}(
     {{-"\n    const unsigned optflags," if lh.args|opt|length > 0}}
     {% for dat in lh.dats %}
+        {% if dat is indirect_reduction(lh) and lh is particle_loop %}
+    {{dat.typ}} **__restrict__ dat{{dat.id}}, const OPP_INT dat{{dat.id}}_arr_count, // {{dat.ptr}}
+        {% else %}
     {{"const " if dat is read_in(lh)}}{{dat.typ}} *__restrict__ dat{{dat.id}},  // {{dat.ptr}}
+        {% endif %}
     {% endfor %}
     {% if lh is p2c_mapped %}
     const OPP_INT *__restrict__ p2c_map,
@@ -222,10 +226,21 @@ __global__ void opp_dev_{{lh.kernel}}(
             {%+ call opt_cuda_tern(arg) %}{{arg_to_pointer_cuda(arg)}}{% endcall %}{{-"," if not loop.last}} // {% if arg is dat %}{{lh.dat(arg).ptr}} {% endif +%}
             {% endfor %}
         );
+        {% for dat in lh.dats if config.atomics and lh is particle_loop %}
+            {% if dat is indirect_reduction(lh) %}
+
+        {{dat.typ}}* tmp{{dat.id}} = dat{{dat.id}}[threadIdx.x % dat{{dat.id}}_arr_count];
+            {% endif %}
+        {% endfor %}
+        {%- if lh is particle_loop and config.atomics -%}
+        {% set dat_name = "tmp" -%}
+        {%- else %}
+        {% set dat_name = "dat" -%}
+        {%- endif %}
         {% for arg in lh.args_expanded|indirect|reduction if config.atomics %}
 
         for (int d = 0; {{opt_cuda_cond_comp(arg)}}d < {{lh.dat(arg).dim}}; ++d)
-            atomicAdd(dat{{arg.dat_id}} + {{map_lookup(arg, kernel_idx)}} + (d{{stride_cuda(arg)}}), arg{{arg.id}}_{{arg.map_idx}}_local[d]);
+            atomicAdd({{dat_name}}{{arg.dat_id}} + {{map_lookup(arg, kernel_idx)}} + (d{{stride_cuda(arg)}}), arg{{arg.id}}_{{arg.map_idx}}_local[d]);
         {% endfor %}
     }
     {% endif %}
@@ -343,16 +358,17 @@ __global__ void opp_dev_sr_{{lh.kernel}}( // Used for Segmented Reductions
 
 {% block host_prologue_early_exit_cleanup %}
         opp_set_dirtybit_grouped(nargs, args, Device_GPU);
-        cutilSafeCall(cudaDeviceSynchronize());   
+        OPP_DEVICE_SYNCHRONIZE();   
 {% endblock %}
 
 {% block host_prologue %}
-void opp_par_loop_{{lh.iterator_type}}__{{lh.kernel}}(opp_set set, opp_iterate_type, 
+void opp_par_loop_{{lh.iterator_type}}__{{lh.kernel}}(opp_set set,
     {% for arg in lh.args %}
     opp_arg arg{{arg.id}}{{"," if not loop.last}} // {% if arg is dat %}{{lh.dat(arg).ptr}} {% endif -%} | OPP_{{arg.access_type.name}}
     {% endfor %}
 ) 
-{
+{ OPP_RETURN_IF_INVALID_PROCESS;
+
     const int nargs = {{lh.args|length}};
     opp_arg args[nargs];
 
@@ -373,7 +389,7 @@ void opp_par_loop_{{lh.iterator_type}}__{{lh.kernel}}(opp_set set, opp_iterate_t
         {% if lh is double_indirect_reduc %}
 
 #ifdef USE_MPI
-    opp_init_double_indirect_reductions_cuda(nargs, args);
+    opp_init_double_indirect_reductions_device(nargs, args);
 #endif
         {% endif %} 
     {% endif %} 
@@ -417,22 +433,13 @@ void opp_par_loop_{{lh.iterator_type}}__{{lh.kernel}}(opp_set set, opp_iterate_t
     {% endif %}
     {% for dat in lh.dats|soa %}
         {% if dat is map_not_dat %}
-    if (opp_k{{kernel_idx}}_dat{{dat.id}}_stride != args[{{dat.arg_id}}].size) {
-        opp_k{{kernel_idx}}_dat{{dat.id}}_stride = args[{{dat.arg_id}}].size;
-        cutilSafeCall(cudaMemcpyToSymbol(opp_k{{kernel_idx}}_dat{{dat.id}}_stride_d, &opp_k{{kernel_idx}}_dat{{dat.id}}_stride, sizeof(OPP_INT)));
-    }
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k{{kernel_idx}}_dat{{dat.id}}_stride_d, &opp_k{{kernel_idx}}_dat{{dat.id}}_stride, &(args[{{dat.arg_id}}].size), 1);
         {% else %}
-    if (opp_k{{kernel_idx}}_dat{{dat.id}}_stride != args[{{dat.arg_id}}].dat->set->set_capacity) {
-        opp_k{{kernel_idx}}_dat{{dat.id}}_stride = args[{{dat.arg_id}}].dat->set->set_capacity;
-        cutilSafeCall(cudaMemcpyToSymbol(opp_k{{kernel_idx}}_dat{{dat.id}}_stride_d, &opp_k{{kernel_idx}}_dat{{dat.id}}_stride, sizeof(OPP_INT)));
-    }
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k{{kernel_idx}}_dat{{dat.id}}_stride_d, &opp_k{{kernel_idx}}_dat{{dat.id}}_stride, &(args[{{dat.arg_id}}].dat->set->set_capacity), 1);
         {% endif %}
     {% endfor %}
     {% for map in lh.maps %}
-    if (opp_k{{kernel_idx}}_map{{map.id}}_stride != args[{{map.arg_id}}].size) {
-        opp_k{{kernel_idx}}_map{{map.id}}_stride = args[{{map.arg_id}}].size;
-        cutilSafeCall(cudaMemcpyToSymbol(opp_k{{kernel_idx}}_map{{map.id}}_stride_d, &opp_k{{kernel_idx}}_map{{map.id}}_stride, sizeof(OPP_INT)));
-    }
+    opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k{{kernel_idx}}_map{{map.id}}_stride_d, &opp_k{{kernel_idx}}_map{{map.id}}_stride, &(args[{{map.arg_id}}].size), 1);
     {% endfor %}
 
 #ifdef OPP_BLOCK_SIZE_{{kernel_idx}}
@@ -493,7 +500,11 @@ void opp_par_loop_{{lh.iterator_type}}__{{lh.kernel}}(opp_set set, opp_iterate_t
 {% macro atomic_kernel_call(shared_size) %}
 opp_dev_{{lh.kernel}}<<<num_blocks, block_size{{-(", %s" % shared_size) if lh.args|gbl|reduction|length > 0}}>>>(
     {% for dat in lh.dats %}
+        {% if dat is indirect_reduction(lh) and lh is particle_loop %}
+    arg{{dat.arg_id}}_dat_thread_data_d, array_count,     // {{dat.ptr}}
+        {% else %}
     ({{dat.typ}} *)args[{{dat.arg_id}}].data_d,     // {{dat.ptr}}
+        {% endif %}
     {% endfor %}
     {% if lh is p2c_mapped %}
     (OPP_INT *)set->mesh_relation_dat->data_d,
@@ -517,13 +528,13 @@ opp_dev_{{lh.kernel}}<<<num_blocks, block_size{{-(", %s" % shared_size) if lh.ar
 opp_dev_sr_{{lh.kernel}}<<<num_blocks, block_size{{-(", %s" % shared_size) if lh.args|gbl|reduction|length > 0}}>>>( 
     {% for dat in lh.dats %}
         {% if dat is sr_both_direct_and_indirect_reduction(lh) %}
-    (OPP_INT *)thrust::raw_pointer_cast(sr_dat{{dat.id}}_keys_dv.data()),     // sr keys for {{dat.ptr}}
-    ({{dat.typ}} *)thrust::raw_pointer_cast(sr_dat{{dat.id}}_values_dv.data()),     // sr values for {{dat.ptr}}
+    opp_get_dev_raw_ptr<OPP_INT>(sr_dat{{dat.id}}_keys_dv),     // sr keys for {{dat.ptr}}
+    opp_get_dev_raw_ptr<{{dat.typ}}>(sr_dat{{dat.id}}_values_dv),     // sr values for {{dat.ptr}}
     ({{dat.typ}} *)args[{{dat.arg_id}}].data_d,     // {{dat.ptr}}
         {% else %}
             {% if dat is indirect_reduction(lh) %}
-    (OPP_INT *)thrust::raw_pointer_cast(sr_dat{{dat.id}}_keys_dv.data()),     // sr keys for {{dat.ptr}}
-    ({{dat.typ}} *)thrust::raw_pointer_cast(sr_dat{{dat.id}}_values_dv.data()),     // sr values for {{dat.ptr}}
+    opp_get_dev_raw_ptr<OPP_INT>(sr_dat{{dat.id}}_keys_dv),     // sr keys for {{dat.ptr}}
+    opp_get_dev_raw_ptr<{{dat.typ}}>(sr_dat{{dat.id}}_values_dv),     // sr values for {{dat.ptr}}
             {% else %}
     ({{dat.typ}} *)args[{{dat.arg_id}}].data_d,     // {{dat.ptr}}
             {% endif %}
@@ -561,8 +572,24 @@ opp_dev_sr_{{lh.kernel}}<<<num_blocks, block_size{{-(", %s" % shared_size) if lh
     {% endif %}
     {% if lh is direct or config.atomics %}
         {
+        {% if lh.args|dat|indirect|reduction|length > 0 and lh is particle_loop %}
+            const int array_count = opp_params->get<OPP_INT>("gpu_reduction_arrays");
+        {% endif %}
+        {% for dat in lh.dats %}
+            {% if dat is indirect_reduction(lh) and lh is particle_loop %}
+            {{dat.typ}}** arg{{dat.id}}_dat_thread_data_d = opp_create_thread_level_data<{{dat.typ}}>(args[{{dat.arg_id}}]);
+            {% endif %}
+        {% endfor %}
             {{atomic_kernel_call("(reduction_size * block_size)",
                 "start", "end")|indent(12)}}
+        {% if lh.args|dat|indirect|reduction|length > 0 and lh is particle_loop %}
+            OPP_DEVICE_SYNCHRONIZE(); 
+        {% endif %}
+        {% for dat in lh.dats %}
+            {% if dat is indirect_reduction(lh) and lh is particle_loop %}
+            opp_reduce_thread_level_data<{{dat.typ}}>(args[{{dat.id}}]);
+            {% endif %}
+        {% endfor %}
         }
     {% endif %}
     {% if lh is indirect and lh.args|dat|indirect|reduction|length > 0 and config.atomics and config.seg_red %}     
@@ -570,10 +597,7 @@ opp_dev_sr_{{lh.kernel}}<<<num_blocks, block_size{{-(", %s" % shared_size) if lh
     {% endif %}
     {% if lh is indirect and lh.args|dat|indirect|reduction|length > 0 and config.seg_red %}
         {
-            if (opp_k{{kernel_idx}}_sr_set_stride != set->size) {
-                opp_k{{kernel_idx}}_sr_set_stride = set->size;
-                cutilSafeCall(cudaMemcpyToSymbol(opp_k{{kernel_idx}}_sr_set_stride_d, &opp_k{{kernel_idx}}_sr_set_stride, sizeof(OPP_INT)));
-            }
+            opp_mem::dev_copy_to_symbol<OPP_INT>(opp_k{{kernel_idx}}_sr_set_stride_d, &opp_k{{kernel_idx}}_sr_set_stride, &(set->size), 1);
 
         {% for arg in lh.args|dat|indirect|reduction|not_already_mapped(lh) %}
             size_t operating_size_dat{{arg.dat_id}} = 0, resize_size_dat{{arg.dat_id}} = 0;
@@ -600,7 +624,7 @@ opp_dev_sr_{{lh.kernel}}<<<num_blocks, block_size{{-(", %s" % shared_size) if lh
             opp_profiler->start("SR_CrKeyVal");
             {{seg_red_kernel_call("(reduction_size * block_size)",
                 "start", "end")|indent(12)}}
-            cutilSafeCall(cudaDeviceSynchronize());
+            OPP_DEVICE_SYNCHRONIZE();
             opp_profiler->end("SR_CrKeyVal");
 
         {% for arg in lh.args|dat|indirect|reduction|not_already_mapped(lh) %}
@@ -624,16 +648,16 @@ opp_dev_sr_{{lh.kernel}}<<<num_blocks, block_size{{-(", %s" % shared_size) if lh
             // Assign reduced values to the nodes using keys/values
             opp_profiler->start("SR_Assign");                
             opp_k{{kernel_idx}}::assign_values<<<num_blocks, block_size>>> ( // TODO : check whether num_blocks is correct
-                (OPP_INT *) thrust::raw_pointer_cast(sr_dat{{arg.dat_id}}_keys_dv.data()),
-                (OPP_REAL *) thrust::raw_pointer_cast(sr_dat{{arg.dat_id}}_values_dv.data()),
+                opp_get_dev_raw_ptr<OPP_INT>(sr_dat{{arg.dat_id}}_keys_dv),
+                opp_get_dev_raw_ptr<OPP_REAL>(sr_dat{{arg.dat_id}}_values_dv),
                 (OPP_REAL *) args[{{arg.dat_id}}].data_d,
                 0, reduced_size);
-            cutilSafeCall(cudaDeviceSynchronize());
+            OPP_DEVICE_SYNCHRONIZE();
             opp_profiler->end("SR_Assign");
 
             // Last: clear the thrust vectors if this is the last iteration (avoid crash)
             if (opp_params->get<OPP_INT>("num_steps") == (OPP_main_loop_iter + 1)) {
-                cutilSafeCall(cudaDeviceSynchronize());
+                OPP_DEVICE_SYNCHRONIZE();
                 sr_dat{{arg.dat_id}}_values_dv.clear(); sr_dat{{arg.dat_id}}_values_dv.shrink_to_fit();
                 sr_dat{{arg.dat_id}}_keys_dv.clear(); sr_dat{{arg.dat_id}}_keys_dv.shrink_to_fit();
             }        
@@ -680,12 +704,12 @@ opp_dev_sr_{{lh.kernel}}<<<num_blocks, block_size{{-(", %s" % shared_size) if lh
 
     {% endfor %}
     opp_set_dirtybit_grouped(nargs, args, Device_GPU);
-    cutilSafeCall(cudaDeviceSynchronize());   
+    OPP_DEVICE_SYNCHRONIZE();   
     {% if lh is double_indirect_reduc %}
 
 #ifdef USE_MPI    
-    opp_exchange_double_indirect_reductions_cuda(nargs, args);
-    opp_complete_double_indirect_reductions_cuda(nargs, args);
+    opp_exchange_double_indirect_reductions_device(nargs, args);
+    opp_complete_double_indirect_reductions_device(nargs, args);
 #endif
     {% endif %} 
 {{super()}}

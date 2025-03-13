@@ -6,7 +6,7 @@
 #SBATCH --nodes=8                    # Total number of nodes 
 #SBATCH --ntasks-per-node=8          # 8 MPI ranks per node, 16 total (2x8)
 #SBATCH --gpus-per-node=8            # Allocate one gpu per MPI rank
-#SBATCH --time=0-05:00:00            # Run time (d-hh:mm:ss)
+#SBATCH --time=0-01:00:00            # Run time (d-hh:mm:ss)
 ##SBATCH --mail-type=all             # Send email at begin and end of job
 #SBATCH --account=project_465001068  # Project for billing
 ##SBATCH --mail-user=username@domain.com
@@ -51,14 +51,14 @@ echo "Git commit " $gitcommit
 echo "********************************************************"
 cd -
 
-hdfOriginalFolder=/users/lantraza/phd/box_mesh_gen/hdf5
+hdfOriginalFolder=/project/project_465001068/box_mesh_gen/hdf5
 num_nodes=$SLURM_JOB_NUM_NODES
 
 configFile="box_fempic.param"
 file=$PWD'/'$configFile
 
-for run in 1 2 3 4; do
-    for config in 1536000 3072000; do
+for run in 1 2 3; do
+    for config in 1536000 3072000 6144000; do
             
         folder=$runFolder/$config"_mpi"
         (( totalGPUs=8*$SLURM_JOB_NUM_NODES ))
@@ -80,7 +80,7 @@ for run in 1 2 3 4; do
         sed -i "s/STRING hdf_filename = <path_to_hdf5_mesh_file>/STRING hdf_filename = ${escaped_folder}\/box_${config}.hdf5/" ${currentfilename}
         sed -i "s/STRING rand_file    = <path_to_hdf5_mesh_file>/STRING rand_file    = ${escaped_folder}\/random_100k.dat/" ${currentfilename}
         if [ "$use_seg_red" -eq 1 ]; then
-            sed -i "s/BOOL use_reg_red = false/BOOL use_reg_red = true/" ${currentfilename}
+            sed -i "s/BOOL opp_segmented_red = false/BOOL opp_segmented_red = true/" ${currentfilename}
         fi
 
         # ---------------------       

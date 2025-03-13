@@ -34,7 +34,7 @@
 {%- endmacro -%}
 
 {% block host_prologue %}
-void opp_par_loop_{{lh.iterator_type}}__{{lh.kernel}}(opp_set set, opp_iterate_type, 
+void opp_par_loop_{{lh.iterator_type}}__{{lh.kernel}}(opp_set set,
     {% for arg in lh.args %}
     opp_arg arg{{arg.id}}{{"," if not loop.last}} // {% if arg is dat %}{{lh.dat(arg).ptr}} {% endif -%} | OPP_{{arg.access_type.name}}
     {% endfor %}

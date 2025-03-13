@@ -1,73 +1,144 @@
-cmake_minimum_required(VERSION 3.12)
-project(OPPIC)
+cmake_minimum_required(VERSION 3.10)
 
-# 1) intel-2021.4/intel-oneapi-2021.4   2) intel-2021.4/impi-oneapi-2021.4
-# set(CMAKE_C_COMPILER "/opt/intel/oneapi/2021.3/mpi/latest/bin/mpiicc")
-# set(CMAKE_CXX_COMPILER "/opt/intel/oneapi/2021.3/mpi/latest/bin/mpiicpc")
+project(OPP_Project LANGUAGES CXX)
 
-# set(CMAKE_VERBOSE_MAKEFILE ON)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -DDEBUG_LOG")
 
-# set(PETSC_DIR /ext-home/zl/lib_install/petsc-3.18.3-oneapi-2021.3-mpi_telos)
-set(CMAKE_CXX_FLAGS "-std=c++11 -fPIC -Wwrite-strings")
-
-set(USE_PETSC ${PETSC} CACHE STRING "Description of the argument")
-
-if(USE_PETSC)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_PETSC")
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Release")
 endif()
-# set(OpenMP_CXX_FLAGS "-fopenmp")
-# set(OpenMP_CXX_LIB_NAMES "omp")
 
-find_package(OpenMP REQUIRED)
-find_package(MPI REQUIRED)
-# find_package(ParMETIS REQUIRED)
+find_package(OpenMP)
+find_package(CUDA)
+find_package(MPI)
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+if(CUDA_FOUND)
+    option(CUDA "Enable CUDA support" ON)
+    set(CMAKE_CUDA_ARCHITECTURES $ENV{CUDA_ARCH})
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --extended-lambda -DUSE_THRUST -Xptxas -dlcm=ca")
+endif()
 
-set(CORE_SOURCES
-    src/core/opp_lib_core.cpp 
-    src/core/opp_util.cpp 
-    src/core/opp_params.cpp 
+include_directories($ENV{OPP_PATH}/include)
+link_directories($ENV{OPP_PATH}/lib)
+
+# ------------------------------------------------------------------------------------------
+set(SRC_SEQ_CPP
+    "src/core/opp_lib_core.cpp"
+    "src/core/opp_util.cpp"
+    "src/core/opp_params.cpp"
+    "src/seq/opp_seq.cpp"
 )
 
-# Add library target for sequential version
-add_library(opp_seq STATIC 
-    ${CORE_SOURCES}
-    src/seq/opp_seq.cpp
-)
+add_library(opp_seq STATIC ${SRC_SEQ_CPP})
+# target_compile_options(opp_seq PRIVATE ${CPPFLAGS})
+# target_include_directories(opp_seq PRIVATE "$ENV{OPP_PATH}/include")
 
-# Add library target for OpenMP version
-add_library(opp_omp STATIC 
-    ${CORE_SOURCES}
-    src/omp/opp_omp.cpp
-)
-target_compile_options(opp_omp PRIVATE ${OpenMP_CXX_FLAGS})
+add_custom_target(seq ALL DEPENDS opp_seq)
+message(STATUS "Configured OP-PIC seq backend")
 
-# Add library target for MPI version
-add_library(opp_mpi STATIC 
-    ${CORE_SOURCES}
-    src/mpi/opp_mpi.cpp
-    src/mpi/opp_mpi_halo.cpp
-    src/mpi/opp_mpi_partition.cpp
-    src/mpi/opp_mpi_utils.cpp
-    src/mpi/opp_mpi_particle_comm.cpp 
-    src/mpi/opp_mpi_double_ind_reducs.cpp
-)
-target_compile_options(opp_mpi PRIVATE 
-    ${MPI_CXX_COMPILE_OPTIONS}
-)
+# ------------------------------------------------------------------------------------------
+if (OpenMP_CXX_FOUND)
+    set(SRC_OMP_CPP 
+        "src/core/opp_lib_core.cpp"
+        "src/core/opp_util.cpp"
+        "src/core/opp_params.cpp"
+        "src/omp/opp_omp.cpp"
+    )
+    add_library(opp_omp STATIC ${SRC_OMP_CPP})
+        # target_compile_options(opp_omp PRIVATE ${CPPFLAGS} ${OpenMP_CXX_FLAGS})
+    target_compile_options(opp_omp PRIVATE ${OpenMP_CXX_FLAGS})
+    # target_link_libraries(opp_omp PRIVATE OpenMP::OpenMP_CXX)
+        # target_include_directories(opp_omp PRIVATE "$ENV{OPP_PATH}/include")
 
-# # Add library target for CUDA version
-# find_package(CUDA REQUIRED)
-# add_library(lib_opp_cuda STATIC oppic.cu)
-# target_include_directories(lib_opp_cuda PRIVATE ${CUDA_INCLUDE_DIRS})
-# target_link_libraries(lib_opp_cuda PRIVATE ${CUDA_LIBRARIES})
+    add_custom_target(omp ALL DEPENDS opp_omp)
+    message(STATUS "Configured OP-PIC omp backend")
+endif()
 
-# # Add executable target
-# add_executable(oppic main.cpp)
+# ------------------------------------------------------------------------------------------
+if(MPI_FOUND)
+    set(SRC_MPI_CPP 
+        "src/core/opp_lib_core.cpp"
+		"src/core/opp_util.cpp"
+		"src/core/opp_params.cpp"
+		"src/mpi/opp_mpi_halo.cpp"
+		"src/mpi/opp_mpi_halo_core.cpp"
+		"src/mpi/opp_mpi_partition.cpp"
+		"src/mpi/opp_mpi.cpp"
+		"src/mpi/opp_mpi_core.cpp"
+		"src/mpi/opp_mpi_utils.cpp"
+		"src/mpi/opp_mpi_particle_comm.cpp"
+		"src/mpi/opp_mpi_double_ind_reducs.cpp"
+    )
+    add_library(opp_mpi STATIC ${SRC_MPI_CPP})
+    target_compile_options(opp_mpi PRIVATE ${CPPFLAGS} -DUSE_MPI ${MPI_CXX_COMPILE_FLAGS})
+    # set_source_files_properties(${SRC_MPI_CPP} PROPERTIES COMPILE_FLAGS "${MPI_CXX_COMPILE_FLAGS}")
+    # target_link_libraries(opp_mpi PRIVATE MPI::MPI_CXX)
+    target_include_directories(opp_mpi PRIVATE ${MPI_INCLUDE_PATH})
 
-# # Link libraries to executable
-# target_link_libraries(oppic PRIVATE lib_opp_seq)  # Sequential version
-# target_link_libraries(oppic PRIVATE lib_opp_omp)  # OpenMP version
-# target_link_libraries(oppic PRIVATE lib_opp_mpi)  # MPI version
-# target_link_libraries(oppic PRIVATE lib_opp_cuda)  # CUDA version
+    add_custom_target(mpi ALL DEPENDS opp_mpi)
+    message(STATUS "Configured OP-PIC mpi backend")
+endif()
+
+# ------------------------------------------------------------------------------------------
+if (CUDA_FOUND)
+    enable_language(CUDA)
+
+    set(SRC_CUDA_CPP
+        "src/core/opp_lib_core.cpp"
+        "src/core/opp_util.cpp"
+        "src/core/opp_params.cpp"
+        "src/cuda/opp_cuda.cu"
+        "src/cuda/opp_particle_sorter.cu"
+        "src/cuda/opp_cuda_halo.cu"
+    )
+
+    add_library(opp_cuda STATIC ${SRC_CUDA_CPP})
+    target_compile_options(opp_cuda PRIVATE ${CPPFLAGS} -DUSE_THRUST)
+    set_target_properties(opp_cuda PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        POSITION_INDEPENDENT_CODE ON
+    )
+    target_include_directories(opp_cuda PRIVATE 
+        $ENV{OPP_PATH}/include 
+        $ENV{CUDA_INSTALL_PATH}/include
+    )
+
+    add_custom_target(cuda ALL DEPENDS opp_cuda)
+    message(STATUS "Configured OP-PIC cuda backend")
+endif()
+
+if (MPI_FOUND AND CUDA_FOUND)
+    set(SRC_CUDA_MPI_CPP
+        "src/core/opp_lib_core.cpp"
+        "src/core/opp_util.cpp"
+        "src/core/opp_params.cpp"
+        "src/mpi/opp_mpi_halo_core.cpp"
+        "src/mpi/opp_mpi_partition.cpp"
+        "src/mpi/opp_mpi_core.cpp"
+        "src/mpi/opp_mpi_particle_comm.cpp"
+        "src/mpi/opp_mpi_double_ind_reducs.cpp"
+        "src/mpi/opp_mpi_utils.cpp"
+        "src/cuda/opp_cuda.cu"
+        "src/cuda/opp_particle_sorter.cu"
+        "src/cuda/opp_cuda_halo.cu"
+    )
+
+    add_library(opp_cuda_mpi STATIC ${SRC_CUDA_MPI_CPP})
+    target_compile_options(opp_cuda_mpi PRIVATE ${CPPFLAGS} -DUSE_THRUST -DUSE_MPI)
+    set_target_properties(opp_cuda_mpi PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        POSITION_INDEPENDENT_CODE ON
+    )
+    target_include_directories(opp_cuda_mpi PRIVATE 
+        $ENV{OPP_PATH}/include 
+        $ENV{CUDA_INSTALL_PATH}/include 
+        ${MPI_INCLUDE_PATH}
+    )
+
+    add_custom_target(cuda_mpi ALL DEPENDS opp_cuda_mpi)
+    message(STATUS "Configured OP-PIC cuda_mpi backend")
+endif()
+
+# ------------------------------------------------------------------------------------------

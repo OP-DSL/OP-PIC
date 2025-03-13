@@ -14,17 +14,17 @@ Params::Params(std::string file_name)
     params_file.open(file_name);
 
     std::string line;
-    while(std::getline(params_file, line)) 
-    {
+    while(std::getline(params_file, line)) {
+        
         std::regex_replace(line, std::regex("\\s*\\(#.*\\)\\?$"), "");
         if (line.length() == 0) 
             continue;
 
         std::smatch matches;
-        if (std::regex_match(line, matches, std::regex("(BOOL|STRING|INT|REAL)(\\s+)([aA-zZ]*)(\\s+)(\\=)(\\s+)(.*)"))) 
-        {
-            if (matches.size() != 8) 
-            {
+        if (std::regex_match(line, matches, 
+                std::regex("(BOOL|STRING|INT|REAL)(\\s+)([aA-zZ]*)(\\s+)(\\=)(\\s+)(.*)"))) {
+
+            if (matches.size() != 8) {
                 std::cerr << "Invalid input line: '" << line << "'" << matches.size() << std::endl;
                 exit(-1);
             }
@@ -33,33 +33,28 @@ Params::Params(std::string file_name)
             std::string key = matches[3];
             std::string value = matches[7];
 
-            if (type == "STRING")
-            {
+            if (type == "STRING") {
                 add<OPP_STRING>(key, value);
             }
-            else if (type == "INT")
-            {
+            else if (type == "INT") {
                 add<OPP_INT>(key, std::stoi(value));
             }
-            else if (type == "REAL")
-            {
+            else if (type == "REAL") {
                 add<OPP_REAL>(key, std::stod(value));
             }
-            else if (type == "BOOL")
-            {
+            else if (type == "BOOL") {
                 bool insertValue = false;
-                if (std::regex_match(value, std::regex("^t(rue)?$", std::regex_constants::icase)) || value == "1") 
-                {
+                if (std::regex_match(value, std::regex("^t(rue)?$", std::regex_constants::icase)) || 
+                        value == "1") {
                     insertValue = true;
-                } else if (std::regex_match(value, std::regex("^f(alse)?$", std::regex_constants::icase)) || value == "0") 
-                {
+                } else if (std::regex_match(value, std::regex("^f(alse)?$", std::regex_constants::icase)) || 
+                        value == "0") {
                     insertValue = false;
                 }
 
                 add<OPP_BOOL>(key, insertValue);
             }
-            else
-            {
+            else {
                 std::cerr << "Unrecognised parameter: '" << line << "'" << std::endl;
                 // exit(-1);
             }
@@ -70,7 +65,8 @@ Params::Params(std::string file_name)
 
 void Params::write(std::ostream &out) {
 
-    if (OPP_rank != OPP_ROOT) return;
+    if (OPP_rank != OPP_ROOT) 
+        return;
     
     out << std::endl << "SIMULATION PARAMETERS"  << std::endl;
     out << "---------------------" << std::endl;

@@ -1,110 +1,69 @@
 #!/bin/bash
 
 #SBATCH --job-name=cabN1
-#SBATCH --time=01:00:00
+#SBATCH --time=00:20:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=128
 #SBATCH --cpus-per-task=1
 
 #SBATCH --account=e723-neptune             
 #SBATCH --partition=standard
-#SBATCH --qos=standard
+#SBATCH --qos=short
 
 echo "Start date and time: $(date +"%Y-%m-%d %H:%M:%S")"
+
+runFolder=$PWD"/MPI_"$SLURM_JOB_NUM_NODES"_ADV_S_"$(date +"D_%Y_%m_%d_T_%I_%M_%S")
+echo "Creating running folder -> " $runFolder
+
+binpath='/work/e723/e723/csrcnj/phd/OP-PIC/app_cabanapic_cg/bin/'
+binary=$binpath'mpi'
+echo "Using Binary -> " $binary
+
+echo "Creating running folder -> " $runFolder
+echo "Using Binary -> " $binpath$binary
+echo "********************************************************"
+cd $binpath
+gitbranch=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+gitcommit=$(git log -n 1 $gitbranch)
+echo "Git branch " $gitbranch
+echo "Git commit " $gitcommit
+cd -
+echo "********************************************************"
+
 
 export OMP_NUM_THREADS=1
 export OMP_PLACES=cores
 export OMP_PROC_BIND=close
 
-export SRUN_CPUS_PER_TASK=$SLURM_CPUS_PER_TASK
-
 module load PrgEnv-gnu
 
-runFolder=$PWD"/MPI_"$SLURM_JOB_NUM_NODES"_"$(date +"D_%Y_%m_%d_T_%I_%M_%S")
-echo "Creating running folder -> " $runFolder
-
-binpath='/work/e723/e723/csrcnj/phd/OP-PIC/cabana_mpi/bin/'
-binary=$binpath'mpi'
-echo "Using Binary -> " $binary
-
-cd $binpath
-echo "********************************************************"
-gitbranch=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
-gitcommit=$(git log -n 1 $gitbranch)
-echo "Git branch " $gitbranch
-echo "Git commit " $gitcommit
-echo "********************************************************"
-cd -
 
 num_nodes=$SLURM_JOB_NUM_NODES
 
 configFile="cabana.param"
 file=$PWD/$configFile
 
-for config in 750 1500 3000; do
+base_nz=60
+for ppc in 750 1500 3000; do
     for run in 1 2; do
 
-        echo $file $config
+        echo $file $ppc $(date +"%Y-%m-%d %H:%M:%S")
 
-        # ****************************************
-        echo "Running MPI"
-
-        folder=$runFolder/$config"_mpi"
+        folder=$runFolder/$ppc"_mpi"
 
         mkdir -p $folder
         cp $file $folder
         currentfilename=$folder/$configFile
 
-        (( rnz=$num_nodes*60 ))
-        sed -i "s/INT nz = 30/INT nz = ${rnz}/" ${currentfilename}
-        sed -i "s/INT num_part_per_cell = 1500/INT num_part_per_cell = ${config}/" ${currentfilename}
-        sed -i "s/STRING cluster = pencil/STRING cluster = block/" ${currentfilename}
-        srun $binary $currentfilename  | tee $folder/log_N${num_nodes}_Block_D${config}_R${run}.log;
+        (( nz=$base_nz*$SLURM_JOB_NUM_NODES ))
+
+        sed -i "s/INT nz = 60/INT nz = ${nz}/" ${currentfilename}
+        sed -i "s/INT num_part_per_cell = 750/INT num_part_per_cell = ${ppc}/" ${currentfilename}
+        sed -i "s/INT domain_expansion = 1/INT domain_expansion = ${SLURM_JOB_NUM_NODES}/" ${currentfilename}
+
+        srun --distribution=block:block --hint=nomultithread --unbuffered --cpu-bind=cores $binary $currentfilename  > $folder/log_G${SLURM_JOB_NUM_NODES}_M${base_nz}_D${ppc}_ARR1_R${run}.log;
     done
 done
-
-# for config in 750 1500 3000; do
-#     for run in 1 2; do
-
-#         echo $file $config
-
-#         # ****************************************
-#         echo "Running MPI"
-
-#         folder=$runFolder/$config"_mpi"
-
-#         mkdir -p $folder
-#         cp $file $folder
-#         currentfilename=$folder/$configFile
-
-#         (( rnz=$num_nodes*60 ))
-#         sed -i "s/INT nz = 30/INT nz = ${rnz}/" ${currentfilename}
-#         sed -i "s/INT num_part_per_cell = 1500/INT num_part_per_cell = ${config}/" ${currentfilename}
-#         srun $binary $currentfilename  | tee $folder/log_N${num_nodes}_Pencil_D${config}_R${run}.log;
-#     done
-# done
-
-# for config in 750 1500 3000; do
-#     for run in 1 2; do
-
-#         echo $file $config
-
-#         # ****************************************
-#         echo "Running MPI"
-
-#         folder=$runFolder/$config"_mpi"
-
-#         mkdir -p $folder
-#         cp $file $folder
-#         currentfilename=$folder/$configFile
-
-#         (( rnz=$num_nodes*60 ))
-#         sed -i "s/INT nz = 30/INT nz = ${rnz}/" ${currentfilename}
-#         sed -i "s/INT num_part_per_cell = 1500/INT num_part_per_cell = ${config}/" ${currentfilename}
-#         sed -i "s/STRING cluster = pencil/STRING cluster = cart/" ${currentfilename}
-#         srun $binary $currentfilename  | tee $folder/log_N${num_nodes}_Cart_D${config}_R${run}.log;
-#     done
-# done
 
 echo "simulation done"
 

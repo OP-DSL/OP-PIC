@@ -45,7 +45,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef USE_MPI
 #include <mpi.h>
+extern MPI_Comm OPP_MPI_WORLD;
 #endif
+
+extern int OPP_rank;
+extern int OPP_comm_size;
 
 namespace opp {
 
@@ -63,10 +67,8 @@ namespace opp {
     {
     public:
         Profiler() {
-#ifdef USE_MPI
-            MPI_Comm_rank(MPI_COMM_WORLD, &m_myRank);
-            MPI_Comm_size(MPI_COMM_WORLD, &m_worldSize);
-#endif
+            m_myRank = OPP_rank;
+            m_worldSize = OPP_comm_size;
         }
         
         ~Profiler() {} 
@@ -88,7 +90,7 @@ namespace opp {
         *  
         *  @param 
         */        
-        inline void start(std::string profName) {
+        inline void start(std::string profName) { OPP_RETURN_IF_INVALID_PROCESS;
             m_startTimes[profName] = std::chrono::high_resolution_clock::now();
             m_currentProfileName.push(profName);
         }  
@@ -97,7 +99,7 @@ namespace opp {
         *  
         *  @param 
         */ 
-        inline double end(std::string profName) {
+        inline double end(std::string profName) { OPP_RETURN_ZERO_IF_INVALID_PROCESS;
             if (profName == "")
                 profName = m_currentProfileName.top();
 #ifdef OPP_DEBUG
@@ -171,10 +173,13 @@ namespace opp {
         *  
         *  @param 
         */ 
-        inline void printProfile(bool fromAllRanks = false) const {
+        inline void printProfile(bool fromAllRanks = false) {
 #ifndef USE_MPI
             fromAllRanks = true;
 #endif
+            m_myRank = OPP_rank;
+            m_worldSize = OPP_comm_size;
+            
             this->print(std::cout, fromAllRanks);
         }
 
@@ -222,7 +227,7 @@ namespace opp {
                 ss << "Rank [" << (fromAllRanks ? std::to_string(m_myRank) : std::string("FINAL")) << "]"; 
                 ss << "--------------------------------------------------------" << std::endl;
 
-                ss << "'Profile'                'Count'\t'TotalTime'\t'AverageTime'\t'MeshTransferSize'\t'MeshCommunicationTime'";
+                ss << "'Profile'                      'Count'\t'TotalTime'\t'AverageTime'\t'MeshTransferSize'\t'MeshCommunicationTime'";
                 ss << "\t'ParticleTransferSize'\t'ParticleTransferCount'\t'ParticleCommunicationTime'" << std::endl;
             }
 
@@ -242,7 +247,7 @@ namespace opp {
                 const double particleCommunicationTime = this->getParticleCommunicationTime(profName, fromAllRanks);
 
                 if (fromAllRanks || m_myRank == 0) { 
-                    ss << fromAllRanks << " " << m_myRank << " " << this->adjustString(profName, 20) << "\t" << this->adjustString(std::to_string(count), 6) << "\t"; 
+                    ss << fromAllRanks << " " << m_myRank << " " << this->adjustString(profName, 30) << "\t" << this->adjustString(std::to_string(count), 6) << "\t"; 
                     ss << std::fixed << std::setprecision(10) << elapsedTime << "\t" << averageTime; 
                     std::stringstream so;
                     so << "\t" << meshTransferSize << "\t" << meshCommunicationTime;
@@ -296,8 +301,8 @@ namespace opp {
             {
                 ProfilerData localMax = max;  
                 // Using all reduce since profile print is called after simulation - No perf issue
-                MPI_Allreduce(&localMax.value, &max.value, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD); 
-                MPI_Allreduce(&localMax.count, &max.count, 1, MPI_UNSIGNED_LONG_LONG, MPI_MAX, MPI_COMM_WORLD);
+                MPI_Allreduce(&localMax.value, &max.value, 1, MPI_DOUBLE, MPI_MAX, OPP_MPI_WORLD); 
+                MPI_Allreduce(&localMax.count, &max.count, 1, MPI_UNSIGNED_LONG_LONG, MPI_MAX, OPP_MPI_WORLD);
             }
 #endif  
             return max;
@@ -313,8 +318,8 @@ namespace opp {
             {
                 ProfilerData localSum = sum;  
                 // Using all reduce since profile print is called after simulation - No perf issue
-                MPI_Allreduce(&localSum.value, &sum.value, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-                MPI_Allreduce(&localSum.count, &sum.count, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
+                MPI_Allreduce(&localSum.value, &sum.value, 1, MPI_DOUBLE, MPI_SUM, OPP_MPI_WORLD);
+                MPI_Allreduce(&localSum.count, &sum.count, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, OPP_MPI_WORLD);
             }
 #endif  
             return sum;

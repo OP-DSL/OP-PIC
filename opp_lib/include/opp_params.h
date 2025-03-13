@@ -1,18 +1,6 @@
 #pragma once
 
-#include <string>
-#include <map>
-#include <limits.h>
-#include <float.h>
-
-#ifndef OPP_INT
-    #define OPP_INT int
-    #define OPP_REAL double
-    #define OPP_BOOL bool
-    #define OPP_STRING std::string
-#endif
-
-#define UNUSED(expr) do { (void)(expr); } while (0)
+#include "opp_defs.h"
 
 namespace opp
 {
@@ -24,13 +12,13 @@ namespace opp
             template <typename T>
             inline void add(std::string key, T value) // refer specilized template functions
             {
-                UNUSED(value);
+                UNUSED_VAR(value);
                 std::cerr << "Params add not implemented for type of : " << key << std::endl;
                 // exit(-1);
             }
 
             template <typename T>
-            inline T get(std::string key) // refer specilized template functions
+            inline T get(std::string key, bool error = true) // refer specilized template functions
             {
                 std::cerr << "Params get not implemented for type of : " << key << std::endl;
                 // exit(-1);
@@ -71,42 +59,42 @@ namespace opp
     }
 
     template <>
-    inline OPP_INT Params::get<OPP_INT>(std::string key)
+    inline OPP_INT Params::get<OPP_INT>(std::string key, bool error)
     {
         auto a = int_params.find(key);
         if (a != int_params.end()) return a->second;
-        
-        std::cerr << "ERROR : " << key << " (OPP_INT) not found in configs" << std::endl;
+        if (error)
+            std::cerr << "ERROR : " << key << " (OPP_INT) not found in configs" << std::endl;
         return INT_MAX; 
     }
 
     template <>
-    inline OPP_REAL Params::get<OPP_REAL>(std::string key)
+    inline OPP_REAL Params::get<OPP_REAL>(std::string key, bool error)
     {
         auto a = real_params.find(key);
         if (a != real_params.end()) return a->second;
-        
-        std::cerr << "ERROR : " << key << " (OPP_REAL) not found in configs" << std::endl;
+        if (error)
+            std::cerr << "ERROR : " << key << " (OPP_REAL) not found in configs" << std::endl;
         return DBL_MAX; 
     }
     
     template <>
-    inline OPP_BOOL Params::get<OPP_BOOL>(std::string key)
+    inline OPP_BOOL Params::get<OPP_BOOL>(std::string key, bool error)
     {
         auto a = bool_params.find(key);
         if (a != bool_params.end()) return a->second;
-        
-        std::cerr << "ERROR : " << key << " (BOOL) not found in configs" << std::endl;
+        if (error)
+            std::cerr << "ERROR : " << key << " (BOOL) not found in configs" << std::endl;
         return false; 
     }
 
     template <>
-    inline OPP_STRING Params::get<OPP_STRING>(std::string key)
+    inline OPP_STRING Params::get<OPP_STRING>(std::string key, bool error)
     {
         auto a = str_params.find(key);
         if (a != str_params.end()) return a->second;
-        
-        std::cerr << "ERROR : " << key << " (OPP_STRING) not found in configs" << std::endl;
+        if (error)
+            std::cerr << "ERROR : " << key << " (OPP_STRING) not found in configs" << std::endl;
         return "NOT FOUND"; 
     }
 };

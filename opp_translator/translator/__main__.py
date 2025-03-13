@@ -10,7 +10,7 @@ from pathlib import Path
 import cpp
 from jinja_utils import env
 from language import Lang
-from op import OpError, Type
+from opp import OppError, Type
 from scheme import Scheme
 from store import Application, ParseError
 from target import Target
@@ -18,23 +18,18 @@ from util import getVersion, safeFind
 
 def main(argv=None) -> None:
 
-    #Build arg parser
     parser = ArgumentParser(prog="opp-translator")
 
-    #argument declariations
     parser.add_argument("-V", "--version", help="Version", action="version", version=getVersion()) #this needs version tag
-    parser.add_argument("-v", "--verbose", help="Verbose", action="store_true")
+    parser.add_argument("-v", "--verbose", help="Verbose", action="store_false")
     parser.add_argument("-d", "--dump", help="JSON store dump", action="store_true")
     parser.add_argument("-o", "--out", help="Output directory", type=isDirPath)
     parser.add_argument("-c", "--config", help="Target configuration", type=json.loads, default="{}")
     parser.add_argument("-soa", "--force_soa", help="Force structs of arrays", action="store_true")
-
     parser.add_argument("--suffix", help="Add a suffix to genreated program translations", default="_opp")
-
     parser.add_argument("-I", help="Add to include directories", type=isDirPath, action="append", nargs=1, default=[])
     parser.add_argument("-i", help="Add to include files", type=isFilePath, action="append", nargs=1, default=[])
     parser.add_argument("-D", help="Add to preprocessor defines", action="append", nargs=1, default=[])
-
     parser.add_argument("--file_paths", help="Input OPP sources", type=isFilePath, nargs="+")
 
     target_names = [target.name for target in Target.all()] #TODO: implement Target Findable class
@@ -61,8 +56,8 @@ def main(argv=None) -> None:
         args.I = [[str(ops_install_path/"include")]] + args.I
     else:
         script_parents = list(Path(__file__).resolve().parents)
-        if len(script_parents) >= 3 and script_parents[2].stem == "OPS":
-            args.I = [[str(script_parents[2].joinpath("ops/c/include"))]] + args.I
+        if len(script_parents) >= 3 and script_parents[2].stem == "OPP":
+            args.I = [[str(script_parents[2].joinpath("opp_lib/include"))]] + args.I
 
     for [target] in args.target:
         print(f'2 target {Target.find(target)}')
@@ -89,40 +84,22 @@ def main(argv=None) -> None:
     if len(args.target) == 0:
         args.target = [[target_name] for target_name in target_names]
 
-    # for [target] in args.target:
-    #     target = Target.find(target)
-    #     print(f'4 target {target}')
-
+    print("Code-gen : Program parsing phase started......")
     try:
         app = parse(args, lang)
     except ParseError as e:
         exit(e)
 
-    # TODO: Make sure SOA is applicable to OPS
-    # if args.force_soa:
-    #     for program in app.programs:
-    #         for loop in program.loops:
-    #             loop.dats = [dataclasses.replace(dat, soa=True) for dat in loop.dats]
-
     if args.verbose:
         print()
         print(app)
 
-    # for [target] in args.target:
-    #     target = Target.find(target)
-    #     print(f'5 target {target}')
-
-    # Validation phase
     try: 
         validate(args, lang, app)
-    except OpError as e:
+    except OppError as e:
         exit(e)
 
-    # for [target] in args.target:
-    #     target = Target.find(target)
-    #     print(f'6 target {target}')
-
-    print("Code-gen : Parsing done for all files")
+    print("Code-gen : Program parsing phase finished.........")
 
     # Generate program translations
     print("Code-gen : Program translation phase started......")
@@ -152,8 +129,6 @@ def main(argv=None) -> None:
     # Generating code for targets
     for [target] in args.target:
         target = Target.find(target)
-
-        # print(f'3 target {target}')
 
         # Applying user defined configs to the target config
         for key in target.config:

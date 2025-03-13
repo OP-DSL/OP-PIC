@@ -21,9 +21,12 @@ export OPP_PATH=$OPP/opp_lib
 
 export PETSC_INSTALL_PATH=/work/e723/e723/csrcnj/lib_install/petsc-3.20.0_Milan
 export LD_LIBRARY_PATH=$PETSC_INSTALL_PATH/lib:$LD_LIBRARY_PATH
+export ROCM_INSTALL_DIR=/opt/rocm/
 
-export HDF5_INSTALL_PATH=/opt/cray/pe/hdf5-parallel/1.12.2.1
-export HDF5_INSTALL_PATH=/opt/cray/pe/hdf5/1.12.2.1
+module load cray-hdf5-parallel/1.12.2.7
+export HDF5_INSTALL_PATH=/opt/cray/pe/hdf5-parallel/1.12.2.7
+
+# export HDF5_INSTALL_PATH=/opt/cray/pe/hdf5/1.12.2.1
 
 # srun --gpus=1 --time=00:59:00 --partition=gpu --qos=gpu-shd --account=e723-neptune --pty /bin/bash
 # HIPCCFLAGS = -std=c++17 -D__HIP_PLATFORM_AMD__ --offload-arch=gfx90a -munsafe-fp-atomics -DUSE_THRUST

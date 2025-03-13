@@ -1,4 +1,3 @@
-#include "hip/hip_runtime.h"
 
 /* 
 BSD 3-Clause License
@@ -33,30 +32,71 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "opp_hip.h"
 
-int* opp_saved_mesh_relation_d = nullptr;
+OPP_INT* opp_saved_mesh_relation_d = nullptr;
 size_t opp_saved_mesh_relation_size = 0;
 
-//*************************************************************************************************
-__global__ void opp_device_AssignMeshRelation(
-    int *__restrict mesh_relation,
-    const int *__restrict distribution,
-    int start,
-    int end,
-    int inj_start,
-    int inlet_size
-    ) 
+//****************************************
+void opp_increase_particle_count(opp_set set, const OPP_INT insert_count)
+{ OPP_RETURN_IF_INVALID_PROCESS;
+
+    opp_profiler->start("opp_inc_part_count");
+
+    bool need_resizing = (set->set_capacity < (set->size + insert_count)) ? true : false;
+
+    if (OPP_DBG) 
+        opp_printf("opp_increase_particle_count", "need_resizing %s", need_resizing ? "YES" : "NO");
+
+    // TODO : We should be able to do a device to device copy instead of getting to host
+
+    if (need_resizing) {
+        opp_profiler->start("opp_inc_part_count_DWN");
+        opp_download_particle_set(set, true); 
+        opp_profiler->end("opp_inc_part_count_DWN");
+    }
+
+    opp_profiler->start("opp_inc_part_count_INC");
+    if (!opp_increase_particle_count_core(set, insert_count)) {
+        opp_printf("opp_increase_particle_count", "Error at opp_increase_particle_count_core");
+        opp_abort();
+    }
+    opp_profiler->end("opp_inc_part_count_INC");
+
+    if (need_resizing) {
+
+        opp_profiler->start("opp_inc_part_count_UPL");
+        for (opp_dat& current_dat : *(set->particle_dats)) {
+            if (OPP_DBG) 
+                opp_printf("opp_increase_particle_count", "resizing dat [%s] set_capacity [%d]", 
+                            current_dat->name, set->set_capacity);
+
+            // TODO : We might be able to copy only the old data from device to device!
+
+            opp_create_dat_device_arrays(current_dat, true);
+            opp_upload_dat(current_dat);
+
+            current_dat->dirty_hd = Dirty::NotDirty;
+        }   
+        opp_profiler->end("opp_inc_part_count_UPL");     
+    } 
+
+    opp_profiler->end("opp_inc_part_count");
+}
+
+//****************************************
+__global__ void opp_dev_assign_mesh_relation_kernel(
+    OPP_INT *__restrict mesh_relation,
+    const OPP_INT *__restrict distribution,
+    OPP_INT start,
+    OPP_INT end,
+    OPP_INT inj_start,
+    OPP_INT inlet_size) 
 {
-    int tid = threadIdx.x + blockIdx.x * blockDim.x;
+    const int tid = OPP_DEVICE_GLOBAL_LINEAR_ID;
 
-    if (tid + start < end) 
-    {    
-        int n = tid + start;
-
-        for (int i = 0; i < inlet_size; i++)
-        {
-            if (tid < distribution[i])
-            {
-                // assign inlet face index as the injected particle mesh relation
+    if (tid + start < end) {    
+        const int n = tid + start;
+        for (int i = 0; i < inlet_size; i++) {
+            if (tid < distribution[i]) {
                 mesh_relation[n + inj_start] = i; 
                 break;
             } 
@@ -64,118 +104,106 @@ __global__ void opp_device_AssignMeshRelation(
     }
 }
 
-
 //****************************************
-void opp_inc_part_count_with_distribution(opp_set particles_set, 
-    int num_particles_to_insert, opp_dat iface_dist, bool calc_new)
-{
-    if (OPP_DBG) opp_printf("opp_inc_part_count_with_distribution", "num_particles_to_insert [%d] %s", 
-        num_particles_to_insert, (calc_new ? "NEW" : "COPY"));
+void opp_inc_part_count_with_distribution(opp_set set, OPP_INT insert_count, 
+                                             opp_dat iface_dist, bool calc_new)
+{ OPP_RETURN_IF_INVALID_PROCESS;
 
-    opp_profiler->start("IncPartCountWithDistribution");
+    if (OPP_DBG) 
+        opp_printf("opp_inc_part_count_with_distribution", "insert_count [%d] %s", 
+        insert_count, (calc_new ? "NEW" : "COPY"));
 
-    opp_dat mesh_rel_dat  = particles_set->mesh_relation_dat;
+    opp_profiler->start("opp_inc_parts_with_distr");
 
-    // int nargs = 1;
-    // opp_arg args[nargs];
-    // args[0] = opp_arg_dat(mesh_rel_dat, OPP_READ);
-
-    // int set_size = opp_mpi_halo_exchanges_grouped(particles_set, nargs, args, Device_CPU);
+    opp_dat mesh_rel_dat  = set->mesh_relation_dat;
 
     // TODO : BUG What happens if the complete particle is dirty in device?
 
-    opp_increase_particle_count(particles_set, num_particles_to_insert);
+    opp_increase_particle_count(set, insert_count);
 
-    int nargs1 = 2;
+    const int nargs1 = 2;
     opp_arg args1[nargs1];
 
     // if iface particle distribution is dirty in device, get it to the device
     args1[0] = opp_arg_dat(iface_dist, OPP_READ);
     args1[1] = opp_arg_dat(mesh_rel_dat, OPP_WRITE);
 
-    int set_size = opp_mpi_halo_exchanges_grouped(particles_set, nargs1, args1, Device_GPU);
+    const OPP_INT set_size = opp_mpi_halo_exchanges_grouped(set, nargs1, args1, Device_GPU);
     opp_mpi_halo_wait_all(nargs1, args1);
-    if (set_size > 0) 
-    {
-        int start     = 0;
-        int end       = particles_set->diff;
-        int inj_start = (particles_set->size - particles_set->diff);
 
-        if (end - start > 0) 
-        {
-            if (calc_new) 
-            {
+    if (set_size > 0) {
+        const OPP_INT start     = 0;
+        const OPP_INT end       = set->diff;
+        const OPP_INT inj_start = (set->size - set->diff);
+
+        if (end - start > 0) {
+            if (calc_new) {
                 if (OPP_DBG) 
                     opp_printf("opp_inc_part_count_with_distribution", 
                         "Calculating all from new");
 
-                int nthread = OPP_gpu_threads_per_block;
-                int nblocks = (end - start - 1) / nthread + 1;
+                const int nthread = OPP_gpu_threads_per_block;
+                const int nblocks = (end - start - 1) / nthread + 1;
 
-                opp_device_AssignMeshRelation<<<nblocks, nthread>>>(
-                    (int *) mesh_rel_dat->data_d,
-                    (int *) iface_dist->data_d,
+                opp_dev_assign_mesh_relation_kernel<<<nblocks, nthread>>>(
+                    (OPP_INT *) mesh_rel_dat->data_d,
+                    (OPP_INT *) iface_dist->data_d,
                     start, 
                     end, 
                     inj_start,
                     iface_dist->set->size);                
             }
-            else
-            {
-                size_t copy_size = (end - start) * sizeof(int);
-                int* inj_mesh_relations = (int *)mesh_rel_dat->data_d + inj_start;
+            else {
+                const size_t copy_size = (end - start);
+                OPP_INT* inj_mesh_relations_d = (OPP_INT *)mesh_rel_dat->data_d + inj_start;
 
-                if (opp_saved_mesh_relation_d == nullptr) 
-                {
+                if (opp_saved_mesh_relation_d == nullptr) {
                     if (OPP_DBG) 
                         opp_printf("opp_inc_part_count_with_distribution", 
                             "Allocating saved_mesh_relation_d with size [%zu]", copy_size);
 
-                    opp_saved_mesh_relation_size = copy_size;                
-                    cutilSafeCall(hipMalloc(&(opp_saved_mesh_relation_d), copy_size));
-                    // opp_saved_mesh_relation_d = (int*)opp_host_malloc(copy_size);
+                    opp_saved_mesh_relation_size = copy_size;
+                    opp_saved_mesh_relation_d = opp_mem::dev_malloc<OPP_INT>(copy_size);     
 
-                    // duplicate code below
-                    int nthread = OPP_gpu_threads_per_block;
-                    int nblocks = (end - start - 1) / nthread + 1;
+                    const int nthread = OPP_gpu_threads_per_block;
+                    const int nblocks = (end - start - 1) / nthread + 1;
 
-                    opp_device_AssignMeshRelation<<<nblocks, nthread>>>(
-                        (int *) mesh_rel_dat->data_d,
-                        (int *) iface_dist->data_d,
+                    opp_dev_assign_mesh_relation_kernel<<<nblocks, nthread>>>(
+                        (OPP_INT *) mesh_rel_dat->data_d,
+                        (OPP_INT *) iface_dist->data_d,
                         start, 
                         end, 
                         inj_start,
                         iface_dist->set->size);
-                    // duplicate code above
 
-                    cutilSafeCall(hipDeviceSynchronize());
+                    OPP_DEVICE_SYNCHRONIZE();
 
-                    cutilSafeCall(hipMemcpy(opp_saved_mesh_relation_d, inj_mesh_relations, 
-                        copy_size, hipMemcpyDeviceToDevice));
+                    // save the mesh relation data for next iteration
+                    opp_mem::copy_dev_to_dev<OPP_INT>(opp_saved_mesh_relation_d, 
+                                                    inj_mesh_relations_d, copy_size);
                 }
-                else
-                {
+                else {
                     if (OPP_DBG) 
                         opp_printf("opp_inc_part_count_with_distribution", 
                             "Copying saved_mesh_relation_d with size [%zu]", copy_size);
 
-                    if (opp_saved_mesh_relation_size != copy_size)
-                    {
+                    if (opp_saved_mesh_relation_size != copy_size) {
                         opp_printf("opp_inc_part_count_with_distribution", 
                             "ERROR... saved_mesh_relation_size [%d] does not match with new copy size [%d]", 
                             opp_saved_mesh_relation_size, copy_size);
                     }
 
-                    cutilSafeCall(hipMemcpy(inj_mesh_relations, opp_saved_mesh_relation_d, 
-                        copy_size, hipMemcpyDeviceToDevice));
+                    // Copy from the saved mesh relation data
+                    opp_mem::copy_dev_to_dev<OPP_INT>(inj_mesh_relations_d, 
+                                                opp_saved_mesh_relation_d, copy_size);
                 }
             }
         }
     }
 
     opp_set_dirtybit_grouped(nargs1, args1, Device_GPU);
-    cutilSafeCall(hipDeviceSynchronize());
+    OPP_DEVICE_SYNCHRONIZE();
 
-    opp_profiler->end("IncPartCountWithDistribution");
+    opp_profiler->end("opp_inc_parts_with_distr");
 }
 

@@ -25,7 +25,7 @@ BOOL invert_normals = false
 
 BOOL opp_auto_sort          = false
 REAL opp_allocation_multiple = 11
-INT opp_threads_per_block   = 1024
+INT opp_threads_per_block   = 512
 
 BOOL opp_profile_all        = false
 INT opp_gpu_direct = 0
@@ -40,7 +40,7 @@ STRING opp_dh_mesh_folder  = /work/e723/e723/csrcnj/phd/box_mesh_gen/dh_meshes/f
 # block k-means mpi-block
 STRING cluster = block
 BOOL opp_segmented_red = false
-INT gpu_reduction_arrays = 1024
+INT gpu_reduction_arrays = 128
 
 # HoleFill_All Sort_All Shuffle_All Sort_Periodic Shuffle_Periodic
 STRING opp_fill = HoleFill_All

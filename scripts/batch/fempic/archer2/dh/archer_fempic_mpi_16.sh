@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=femN16
+#SBATCH --job-name=femD16
 #SBATCH --time=00:20:00
 #SBATCH --nodes=16
 #SBATCH --ntasks-per-node=128
@@ -100,12 +100,12 @@ cp $file $folder
 sed -i "s/STRING hdf_filename = <path_to_hdf5_mesh_file>/STRING hdf_filename = ${escaped_folder}\/box_${mesh_full}.hdf5/" ${currentfilename}
 
 srun --distribution=block:block --hint=nomultithread --unbuffered --cpu-bind=cores $binary $currentfilename > ${folder}/run_G${SLURM_JOB_NUM_NODES}_M${mesh}_D0.9625e18_ARR0_r1.log
-srun --distribution=block:block --hint=nomultithread --unbuffered --cpu-bind=cores $binary $currentfilename > ${folder}/run_G${SLURM_JOB_NUM_NODES}_M${mesh}_D0.9625e18_ARR0_r2.log
+# srun --distribution=block:block --hint=nomultithread --unbuffered --cpu-bind=cores $binary $currentfilename > ${folder}/run_G${SLURM_JOB_NUM_NODES}_M${mesh}_D0.9625e18_ARR0_r2.log
 
 sed -i "s/BOOL opp_global_move = false/BOOL opp_global_move = true/" ${currentfilename}
 
 srun --distribution=block:block --hint=nomultithread --unbuffered --cpu-bind=cores $binary $currentfilename > ${folder}/run_G${SLURM_JOB_NUM_NODES}_M${mesh}_D0.9625e18_ARR1_r1.log
-srun --distribution=block:block --hint=nomultithread --unbuffered --cpu-bind=cores $binary $currentfilename > ${folder}/run_G${SLURM_JOB_NUM_NODES}_M${mesh}_D0.9625e18_ARR1_r2.log
+# srun --distribution=block:block --hint=nomultithread --unbuffered --cpu-bind=cores $binary $currentfilename > ${folder}/run_G${SLURM_JOB_NUM_NODES}_M${mesh}_D0.9625e18_ARR1_r2.log
 
 sed -i "s/REAL plasma_den           = 0.9625e18/REAL plasma_den           = 3.4e18/" ${currentfilename}
 sed -i "s/INT charge_multiple = 1/INT charge_multiple = 200/" ${currentfilename}
@@ -113,12 +113,12 @@ sed -i "s/REAL opp_allocation_multiple = 11/REAL opp_allocation_multiple = 5/" $
 sed -i "s/BOOL opp_global_move = true/BOOL opp_global_move = false/" ${currentfilename}
 
 srun --distribution=block:block --hint=nomultithread --unbuffered --cpu-bind=cores $binary $currentfilename > ${folder}/run_G${SLURM_JOB_NUM_NODES}_M${mesh}_D3.4e18_ARR0_r1.log
-srun --distribution=block:block --hint=nomultithread --unbuffered --cpu-bind=cores $binary $currentfilename > ${folder}/run_G${SLURM_JOB_NUM_NODES}_M${mesh}_D3.4e18_ARR0_r2.log
+# srun --distribution=block:block --hint=nomultithread --unbuffered --cpu-bind=cores $binary $currentfilename > ${folder}/run_G${SLURM_JOB_NUM_NODES}_M${mesh}_D3.4e18_ARR0_r2.log
 
 sed -i "s/BOOL opp_global_move = false/BOOL opp_global_move = true/" ${currentfilename}
 
 srun --distribution=block:block --hint=nomultithread --unbuffered --cpu-bind=cores $binary $currentfilename > ${folder}/run_G${SLURM_JOB_NUM_NODES}_M${mesh}_D3.4e18_ARR1_r1.log
-srun --distribution=block:block --hint=nomultithread --unbuffered --cpu-bind=cores $binary $currentfilename > ${folder}/run_G${SLURM_JOB_NUM_NODES}_M${mesh}_D3.4e18_ARR1_r2.log
+# srun --distribution=block:block --hint=nomultithread --unbuffered --cpu-bind=cores $binary $currentfilename > ${folder}/run_G${SLURM_JOB_NUM_NODES}_M${mesh}_D3.4e18_ARR1_r2.log
 
 sed -i "s/REAL plasma_den           = 3.4e18/REAL plasma_den           = 5.75e18/" ${currentfilename}
 sed -i "s/INT charge_multiple = 200/INT charge_multiple = 2000/" ${currentfilename}
@@ -126,12 +126,12 @@ sed -i "s/REAL opp_allocation_multiple = 5/REAL opp_allocation_multiple = 3/" ${
 sed -i "s/BOOL opp_global_move = true/BOOL opp_global_move = false/" ${currentfilename}
 
 srun --distribution=block:block --hint=nomultithread --unbuffered --cpu-bind=cores $binary $currentfilename > ${folder}/run_G${SLURM_JOB_NUM_NODES}_M${mesh}_D5.75e18_ARR0_r1.log
-srun --distribution=block:block --hint=nomultithread --unbuffered --cpu-bind=cores $binary $currentfilename > ${folder}/run_G${SLURM_JOB_NUM_NODES}_M${mesh}_D5.75e18_ARR0_r2.log
+# srun --distribution=block:block --hint=nomultithread --unbuffered --cpu-bind=cores $binary $currentfilename > ${folder}/run_G${SLURM_JOB_NUM_NODES}_M${mesh}_D5.75e18_ARR0_r2.log
 
 sed -i "s/BOOL opp_global_move = false/BOOL opp_global_move = true/" ${currentfilename}
 
 srun --distribution=block:block --hint=nomultithread --unbuffered --cpu-bind=cores $binary $currentfilename > ${folder}/run_G${SLURM_JOB_NUM_NODES}_M${mesh}_D5.75e18_ARR1_r1.log
-srun --distribution=block:block --hint=nomultithread --unbuffered --cpu-bind=cores $binary $currentfilename > ${folder}/run_G${SLURM_JOB_NUM_NODES}_M${mesh}_D5.75e18_ARR1_r2.log
+# srun --distribution=block:block --hint=nomultithread --unbuffered --cpu-bind=cores $binary $currentfilename > ${folder}/run_G${SLURM_JOB_NUM_NODES}_M${mesh}_D5.75e18_ARR1_r2.log
 
 echo "simulation done"
 

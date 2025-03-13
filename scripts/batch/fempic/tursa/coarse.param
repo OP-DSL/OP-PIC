@@ -5,6 +5,7 @@ REAL electron_temperature = 2e8
 REAL wall_potential       = 10000000
 STRING plasma_species     = Duterium
 REAL spwt                 = 2e2
+INT charge_multiple = 1
 
 # Simulation parameters
 INT num_steps          = 250
@@ -19,7 +20,7 @@ STRING wall_mesh    = <path_to_mesh_files>/wall.dat
 # OR
 STRING hdf_filename = <path_to_hdf5_mesh_files>/box_48000.hdf5
 
-STRING rand_file    = /home/dp360/dp360/dc-lant1/phd/box_mesh_gen/random_100k.dat
+STRING rand_file    = /home/dp360/dp360/dc-lant1/phd/box_mesh_gen/random_200k.dat
 
 BOOL invert_normals = false
 

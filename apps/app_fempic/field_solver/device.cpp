@@ -10,7 +10,8 @@
 #endif
 
 //*************************************************************************************************
-void FESolver::init_device_variables() {
+void FESolver::init_device_variables() 
+{ OPP_RETURN_IF_INVALID_PROCESS;
 
     OPP_RUN_ON_ROOT() opp_printf("FESolver", "Running on Device");
 
@@ -34,7 +35,8 @@ void FESolver::init_device_variables() {
 }
 
 //*************************************************************************************************
-void FESolver::destroy_device_variables() {
+void FESolver::destroy_device_variables() 
+{ OPP_RETURN_IF_INVALID_PROCESS;
 
     opp_mem::dev_free(dLocal_d);
     opp_mem::dev_free(f1Local_d);
@@ -171,8 +173,9 @@ void compute_node_potential_kernel(const int n_nodes_set_d, const int* node_to_e
 }
 
 //*************************************************************************************************
-void FESolver::init_f1_and_J(const opp_dat ion_den_dat)
-{
+void FESolver::init_f1_and_J(const opp_dat ion_den_dat) 
+{ OPP_RETURN_IF_INVALID_PROCESS;
+
     const double* ion_den_d = (double*)(ion_den_dat->data_d);
 
 #ifdef USE_SYCL
@@ -232,41 +235,43 @@ void FESolver::init_f1_and_J(const opp_dat ion_den_dat)
 
 //*************************************************************************************************
 void FESolver::build_f1_vector() 
-{
-    const int cells_stride = c2n_map->from->size + c2n_map->from->exec_size + c2n_map->from->nonexec_size;
+{ 
+    if (OPP_IS_VALID_PROCESS) {
+        const int cells_stride = c2n_map->from->size + c2n_map->from->exec_size + c2n_map->from->nonexec_size;
 
 #ifdef USE_SYCL
-    opp_queue->submit([&](sycl::handler &cgh) {
-        const int* c2n_map_l = c2n_map->map_d;
-        const int* n2eq_map_l = node_to_eq_map_d;
-        const double* tempNEQ1_l = tempNEQ1_d;
-        double* f1Local_l = f1Local_d;
-        const double* detJ_l = detJ_d;
-        const double *l_d = l_DEV_CONST;
-        const double *w_d = W_DEV_CONST;
-        const int n_cells_inc_halo_l = n_cells_inc_halo;
-        const int n_int_l = n_int;
+        opp_queue->submit([&](sycl::handler &cgh) {
+            const int* c2n_map_l = c2n_map->map_d;
+            const int* n2eq_map_l = node_to_eq_map_d;
+            const double* tempNEQ1_l = tempNEQ1_d;
+            double* f1Local_l = f1Local_d;
+            const double* detJ_l = detJ_d;
+            const double *l_d = l_DEV_CONST;
+            const double *w_d = W_DEV_CONST;
+            const int n_cells_inc_halo_l = n_cells_inc_halo;
+            const int n_int_l = n_int;
 
-        cgh.parallel_for(sycl::nd_range<1>(OPP_gpu_threads_per_block*cells_inc_haloNBlocks,OPP_gpu_threads_per_block), 
-            [=](sycl::nd_item<1> item) {
-                compute_f1_kernel(c2n_map_l, n2eq_map_l, tempNEQ1_l, f1Local_l, detJ_l, 
-                    n_cells_inc_halo_l, cells_stride, n_int_l, l_d, w_d, item);
-            });
-    });
+            cgh.parallel_for(sycl::nd_range<1>(OPP_gpu_threads_per_block*cells_inc_haloNBlocks,OPP_gpu_threads_per_block), 
+                [=](sycl::nd_item<1> item) {
+                    compute_f1_kernel(c2n_map_l, n2eq_map_l, tempNEQ1_l, f1Local_l, detJ_l, 
+                        n_cells_inc_halo_l, cells_stride, n_int_l, l_d, w_d, item);
+                });
+        });
 #else
-    compute_f1_kernel <<<cells_inc_haloNBlocks, OPP_gpu_threads_per_block>>> (
-        c2n_map->map_d, 
-        node_to_eq_map_d, 
-        tempNEQ1_d, 
-        f1Local_d, 
-        detJ_d, 
-        n_cells_inc_halo, cells_stride, n_int, l_DEV_CONST, W_DEV_CONST
-    );
+        compute_f1_kernel <<<cells_inc_haloNBlocks, OPP_gpu_threads_per_block>>> (
+            c2n_map->map_d, 
+            node_to_eq_map_d, 
+            tempNEQ1_d, 
+            f1Local_d, 
+            detJ_d, 
+            n_cells_inc_halo, cells_stride, n_int, l_DEV_CONST, W_DEV_CONST
+        );
 #endif
 
-    OPP_DEVICE_SYNCHRONIZE();
+        OPP_DEVICE_SYNCHRONIZE();
 
-    opp_mem::copy_dev_to_host<double>(f1Local.data(), f1Local_d, neq);
+        opp_mem::copy_dev_to_host<double>(f1Local.data(), f1Local_d, neq);
+    }
 
     VecSetValues(F1vec, neq, vec_col.data(), f1Local.data(), INSERT_VALUES);
     VecAssemblyBegin(F1vec); VecAssemblyEnd(F1vec);
@@ -274,41 +279,43 @@ void FESolver::build_f1_vector()
 
 //*************************************************************************************************
 void FESolver::build_j_matrix() 
-{
-    const int cells_stride = c2n_map->from->size + c2n_map->from->exec_size + c2n_map->from->nonexec_size;
+{   
+    if (OPP_IS_VALID_PROCESS) {
 
+        const int cells_stride = c2n_map->from->size + c2n_map->from->exec_size + c2n_map->from->nonexec_size;
 #ifdef USE_SYCL
-    opp_queue->submit([&](sycl::handler &cgh) {
-        const int* c2n_map_l = c2n_map->map_d;
-        const int* n2eq_map_l = node_to_eq_map_d;
-        const double* detJ_l = detJ_d;
-        double* tempNEQ3_l = tempNEQ3_d;
-        double* tempNEQ2_l = tempNEQ2_d;
-        const double *l_d = l_DEV_CONST;
-        const double *w_d = W_DEV_CONST;
-        const int n_cells_inc_halo_l = n_cells_inc_halo;
-        const int n_int_l = n_int;
+        opp_queue->submit([&](sycl::handler &cgh) {
+            const int* c2n_map_l = c2n_map->map_d;
+            const int* n2eq_map_l = node_to_eq_map_d;
+            const double* detJ_l = detJ_d;
+            double* tempNEQ3_l = tempNEQ3_d;
+            double* tempNEQ2_l = tempNEQ2_d;
+            const double *l_d = l_DEV_CONST;
+            const double *w_d = W_DEV_CONST;
+            const int n_cells_inc_halo_l = n_cells_inc_halo;
+            const int n_int_l = n_int;
 
-        cgh.parallel_for(sycl::nd_range<1>(OPP_gpu_threads_per_block*cells_inc_haloNBlocks,OPP_gpu_threads_per_block), 
-            [=](sycl::nd_item<1> item) {
-                compute_J_kernel(c2n_map_l, n2eq_map_l, detJ_l, tempNEQ3_l, tempNEQ2_l,
-                    n_cells_inc_halo_l, cells_stride, n_int_l, l_d, w_d, item);
-            });
-    });
+            cgh.parallel_for(sycl::nd_range<1>(OPP_gpu_threads_per_block*cells_inc_haloNBlocks,OPP_gpu_threads_per_block), 
+                [=](sycl::nd_item<1> item) {
+                    compute_J_kernel(c2n_map_l, n2eq_map_l, detJ_l, tempNEQ3_l, tempNEQ2_l,
+                        n_cells_inc_halo_l, cells_stride, n_int_l, l_d, w_d, item);
+                });
+        });
 #else
-    compute_J_kernel <<<cells_inc_haloNBlocks, OPP_gpu_threads_per_block>>> (
-        c2n_map->map_d, 
-        node_to_eq_map_d, 
-        detJ_d, 
-        tempNEQ3_d, 
-        tempNEQ2_d, 
-        n_cells_inc_halo, cells_stride, n_int, l_DEV_CONST, W_DEV_CONST
-    );
+        compute_J_kernel <<<cells_inc_haloNBlocks, OPP_gpu_threads_per_block>>> (
+            c2n_map->map_d, 
+            node_to_eq_map_d, 
+            detJ_d, 
+            tempNEQ3_d, 
+            tempNEQ2_d, 
+            n_cells_inc_halo, cells_stride, n_int, l_DEV_CONST, W_DEV_CONST
+        );
 #endif
 
-    OPP_DEVICE_SYNCHRONIZE();
+        OPP_DEVICE_SYNCHRONIZE();
 
-    opp_mem::copy_dev_to_host<double>(tempNEQ2.data(), tempNEQ2_d, neq);
+        opp_mem::copy_dev_to_host<double>(tempNEQ2.data(), tempNEQ2_d, neq);
+    }
 
     for (int u=0;u<neq;u++)   /* subtract diagonal term - J[u][u]-=tempNEQ2[u]; */
         MatSetValue(Jmat, (u + own_start), (u + own_start), (-tempNEQ2[u]), ADD_VALUES); 
@@ -318,38 +325,47 @@ void FESolver::build_j_matrix()
 //*************************************************************************************************
 void FESolver::compute_node_potential(const opp_dat n_bnd_pot_dat, opp_dat node_potential_dat) {
 
-    VecGetValues(Dvec, neq, vec_col.data(), dLocal.data()); 
+    // VecGetValues(Dvec, neq, vec_col.data(), dLocal.data()); 
+    VecGhostUpdateBegin(Dvec, INSERT_VALUES, SCATTER_FORWARD);
+    VecGhostUpdateEnd(Dvec, INSERT_VALUES, SCATTER_FORWARD);
+    VecGetArray(Dvec, &tmpDptr);
+    for (int i = 0; i < neq; i++) {
+        dLocal[i] = tmpDptr[ex_indices[i]];
+    }
+    VecRestoreArray(Dvec, &tmpDptr);
 
-    const double* n_bnd_pot = (double*)(n_bnd_pot_dat->data_d);
-    double* node_potential = (double*)(node_potential_dat->data_d);
+    if (OPP_IS_VALID_PROCESS) {
+        const double* n_bnd_pot = (double*)(n_bnd_pot_dat->data_d);
+        double* node_potential = (double*)(node_potential_dat->data_d);
 
-    opp_mem::copy_host_to_dev<double>(dLocal_d, dLocal.data(), neq);
+        opp_mem::copy_host_to_dev<double>(dLocal_d, dLocal.data(), neq);
 
 #ifdef USE_SYCL
-    opp_queue->submit([&](sycl::handler &cgh) {
-        const int n_nodes_set_l = n_nodes_set;
-        const int* n2eq_map_l = node_to_eq_map_d;
-        const double* dLocal_l = dLocal_d;
-        const double *n_bnd_pot_l = n_bnd_pot;
-        double *node_potential_l = node_potential;
+        opp_queue->submit([&](sycl::handler &cgh) {
+            const int n_nodes_set_l = n_nodes_set;
+            const int* n2eq_map_l = node_to_eq_map_d;
+            const double* dLocal_l = dLocal_d;
+            const double *n_bnd_pot_l = n_bnd_pot;
+            double *node_potential_l = node_potential;
 
-        cgh.parallel_for(sycl::nd_range<1>(OPP_gpu_threads_per_block*nodesNBlocks,OPP_gpu_threads_per_block), 
-            [=](sycl::nd_item<1> item) {
-                compute_node_potential_kernel(n_nodes_set_l, n2eq_map_l, dLocal_l, 
-                    n_bnd_pot_l, node_potential_l, item);
-            });
-    });
+            cgh.parallel_for(sycl::nd_range<1>(OPP_gpu_threads_per_block*nodesNBlocks,OPP_gpu_threads_per_block), 
+                [=](sycl::nd_item<1> item) {
+                    compute_node_potential_kernel(n_nodes_set_l, n2eq_map_l, dLocal_l, 
+                        n_bnd_pot_l, node_potential_l, item);
+                });
+        });
 #else
-    compute_node_potential_kernel <<<nodesNBlocks, OPP_gpu_threads_per_block>>> (
-        n_nodes_set, 
-        node_to_eq_map_d, 
-        dLocal_d,
-        n_bnd_pot, 
-        node_potential
-    );
+        compute_node_potential_kernel <<<nodesNBlocks, OPP_gpu_threads_per_block>>> (
+            n_nodes_set, 
+            node_to_eq_map_d, 
+            dLocal_d,
+            n_bnd_pot, 
+            node_potential
+        );
 #endif
 
-    OPP_DEVICE_SYNCHRONIZE();
+        OPP_DEVICE_SYNCHRONIZE();
+    }
 }
 
 //*************************************************************************************************

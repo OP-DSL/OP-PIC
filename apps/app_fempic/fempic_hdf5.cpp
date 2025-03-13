@@ -63,7 +63,7 @@ int main(int argc, char **argv)
         OPP_REAL wall_potential        = opp_params->get<OPP_REAL>("wall_potential");
         OPP_REAL grid_spacing          = opp_params->get<OPP_REAL>("grid_spacing");
         OPP_REAL mass                  = 2 * AMU;
-        OPP_REAL charge                = 1 * QE;
+        OPP_REAL charge                = opp_params->get<OPP_INT>("charge_multiple") * QE;
         OPP_INT max_iter               = opp_params->get<OPP_INT>("num_steps");   
         std::string log                = "";
         const std::string file         = opp_params->get<OPP_STRING>("hdf_filename");
@@ -240,7 +240,7 @@ int main(int argc, char **argv)
 }
 
 //*************************************************************************************************
-// std::string f = std::string("F_") + std::to_string(ts + 1);
+// std::string f = std::string("F_") + std::to_string(OPP_main_loop_iter + 1);
 // opp_print_map_to_txtfile(c2n_map  , f.c_str(), "c2n_map.dat");
 // opp_print_dat_to_txtfile(n_charge_den, f.c_str(), "n_charge_den.dat");
 // opp_mpi_print_dat_to_txtfile(c_sd, "c_sd.dat");

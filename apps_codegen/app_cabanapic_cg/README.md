@@ -1,18 +1,25 @@
 # OP-PIC CabanaPIC (Already code generated for reference)
 
+**Please follow the instructions provided in the main readme file first.**
+
+**This README file contains only additional information regarding the application.**
+
+##
 **This folder contain both user written code and OP-PIC code generated code.**
 
 All the user written code will have the below comment;
-
-`// *********************************************`<br>
-`// USER WRITTEN CODE                            `<br>
-`// *********************************************`
+```cpp
+// *********************************************
+// USER WRITTEN CODE                            
+// *********************************************
+```
 
 The code-generator has added the below comment to all the generated code; 
-
-`// *********************************************`<br>
-`// AUTO GENERATED CODE                          `<br>
-`// *********************************************`
+```cpp
+// *********************************************
+// AUTO GENERATED CODE                          
+// ****
+```
 
 If code-generator is invoked in this folder, the available generated code will be replaced with the newly generated code (May generate the same if `cabana.cpp` or `kernels.h` is not changed)
 
@@ -24,35 +31,38 @@ It was originally developed as part of the Exascale Computing Project, Co-design
 Here, we have implemented the application with OP-PIC, using unstructured-mesh mappings solving the same physics as the original.
 
 ## Structure
- * `cabana.cpp`: The main file containing OP-PIC API calls. 
- * `kernels.h`: The user written elemental kernel functions.
- * `cabana_defs.h`: The defines and the structure used to hold data till OP-PIC is initialized.
- * `cabana_misc.h`: Miscellaneous functions including particle initialization (enrichment prior simulation).
- * `cabana_misc_mesh_color.h`: This include a user defined partitioning scheme (Only used in MPI builds).
- * `cabana_misc_mesh_loader.h`: Mesh creating code, used prior OP-PIC DSL initializing. 
+ * `cabana.cpp` : The main file containing OP-PIC API calls. 
+ * `kernels.h` : The user written elemental kernel functions.
+ * `cabana_defs.h` : The defines and the structure used to hold data till OP-PIC is initialized.
+ * `cabana_misc.h` : Miscellaneous functions including particle initialization (enrichment prior simulation).
+ * `cabana_misc_mesh_color.h` : This include a user defined partitioning scheme (Only used in MPI builds).
+ * `cabana_misc_mesh_loader.h` : Mesh creating code, used prior OP-PIC DSL initializing. 
 
 ## Code Generation (Already Generated)
 Code generation can be done by invoking the below command.
-
-`python3 $OPP_TRANSLATOR -v -I$OPP_PATH/include/ --file_paths cabana.cpp`
+```bash
+python3 $OPP_TRANSLATOR -I$OPP_PATH/include/ --file_paths cabana.cpp
+```
 
 Once the code-generator is invoked, a `cabana_opp.cpp` file and `seq`, `omp`, `mpi`, `cuda`, `hip` and `sycl` folders, including `opp_kernels.<cpp|cu>` and a loop kernel header file per unique `opp_par_loop` or `opp_particle_move` loop will get generated.
 
 ## Compile
 Once the platform specific target files are generated, use the provided `MakeFile` to compile the application.
- * `make seq`
- * `make mpi`
- * `make omp`
- * `make omp_mpi`
- * `make cuda`
- * `make cuda_mpi`
- * `make hip`
- * `make hip_mpi`
- * `make sycl`
- * `make sycl_mpi`
+```bash
+ make seq
+ make mpi
+ make omp
+ make omp_mpi
+ make cuda
+ make cuda_mpi
+ make hip
+ make hip_mpi
+ make sycl
+ make sycl_mpi
+```
 
 ## Configuration
-An example configuration file is provided in `OP-PIC/app_cabanapic_cg/configs` folder.
+An example configuration file is provided in `configs` folder.
 
 This file can be used to change the application configurations such as number of steps in the main iterating loop (`num_steps`), domain mesh size (`nx, ny, nz`) and other parameters included in the original CabanaPIC application. 
 
@@ -60,12 +70,16 @@ In addition, the config file include OP-PIC DSL simulation parameters, such as g
 
 # Run
 To run the application, below commands can be used.
- * `bin/seq configs/cabana.param`
- * `bin/omp configs/cabana.param`
- * `bin/cuda configs/cabana.param`
- * `bin/hip configs/cabana.param`
- * `mpirun -np <num_ranks> bin/mpi configs/cabana.param`
- * `mpirun -np <num_ranks> bin/cuda_mpi configs/cabana.param`
- * `mpirun -np <num_ranks> bin/hip_mpi configs/cabana.param`
+```bash
+    bin/seq configs/cabana.param
+    bin/omp configs/cabana.param
+    bin/cuda configs/cabana.param
+    bin/hip configs/cabana.param
+    bin/sycl configs/cabana.param
+    mpirun -np <num_ranks> bin/mpi configs/cabana.param
+    mpirun -np <num_ranks> bin/cuda_mpi configs/cabana.param
+    mpirun -np <num_ranks> bin/hip_mpi configs/cabana.param
+    mpirun -np <num_ranks> bin/sycl_mpi configs/cabana.param
+```
 
 In addition, `srun` can be used for execution.

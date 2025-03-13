@@ -40,7 +40,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * In addition, dummy_random dat will get enriched with random values in "rand_file"
 */
 inline int init_inject_distributions(opp_dat if_dist_dat, opp_dat if_area_dat, opp_dat dummy_random)
-{
+{ OPP_RETURN_ZERO_IF_INVALID_PROCESS;
+
     if (OPP_DBG) opp_printf("init_inject_distributions", "START");
 
     const double plasma_den   = opp_params->get<OPP_REAL>("plasma_den");
@@ -116,7 +117,7 @@ inline int init_inject_distributions(opp_dat if_dist_dat, opp_dat if_area_dat, o
 #ifdef USE_MPI
     // Load the whole file and bradcast
     // TODO : We can reduce communications by sending only the required size
-    MPI_Bcast(&total_size, 1, MPI_INT, OPP_ROOT, MPI_COMM_WORLD);
+    MPI_Bcast(&total_size, 1, MPI_INT, OPP_ROOT, OPP_MPI_WORLD);
 #endif
 
     double* dist = new double[total_size];
@@ -138,7 +139,7 @@ inline int init_inject_distributions(opp_dat if_dist_dat, opp_dat if_area_dat, o
 #ifdef USE_MPI
     // Load the whole file and bradcast
     // TODO : We can reduce communications by sending only the required size
-    MPI_Bcast(dist, total_size, MPI_DOUBLE, OPP_ROOT, MPI_COMM_WORLD);
+    MPI_Bcast(dist, total_size, MPI_DOUBLE, OPP_ROOT, OPP_MPI_WORLD);
 #endif
 
     if (if_area_dat->set->size > 0) 
@@ -168,7 +169,8 @@ inline int init_inject_distributions(opp_dat if_dist_dat, opp_dat if_area_dat, o
     dummy_random->dirty_hd = Dirty::Device; // To make GPU versions to download updated data!
     if_dist_dat->dirty_hd = Dirty::Device; // To make GPU versions to download updated data!
     
-    if (OPP_DBG) opp_printf("init_inject_distributions", "total_inject_count %d", total_inject_count);
+    if (OPP_DBG) 
+        opp_printf("init_inject_distributions", "total_inject_count %d", total_inject_count);
 
     return total_inject_count;
 }
@@ -204,7 +206,8 @@ inline void print_per_cell_particle_counts(opp_dat c_part_count, opp_dat part_me
 */
 inline std::string get_global_level_log(double max_c_ef, double max_n_potential, 
     int local_part_count, int local_parts_injected, int local_part_removed)
-{
+{ OPP_RETURN_EMPTY_IF_INVALID_PROCESS;
+
     std::string log = "";
     int64_t global_part_size = 0, global_inj_size = 0, global_removed = 0;
     int64_t glb_parts, gbl_max_parts, gbl_min_parts;
@@ -213,15 +216,15 @@ inline std::string get_global_level_log(double max_c_ef, double max_n_potential,
     int global_max_comm_iteration = 0, gbl_move_moreX_hops = 0;
 
 #ifdef USE_MPI
-    MPI_Reduce(&OPP_max_comm_iteration, &global_max_comm_iteration, 1, MPI_INT, MPI_MAX, OPP_ROOT, MPI_COMM_WORLD);
-    MPI_Reduce(&OPP_move_moreX_hops, &gbl_move_moreX_hops, 1, MPI_INT, MPI_SUM, OPP_ROOT, MPI_COMM_WORLD);
+    MPI_Reduce(&OPP_max_comm_iteration, &global_max_comm_iteration, 1, MPI_INT, MPI_MAX, OPP_ROOT, OPP_MPI_WORLD);
+    MPI_Reduce(&OPP_move_moreX_hops, &gbl_move_moreX_hops, 1, MPI_INT, MPI_SUM, OPP_ROOT, OPP_MPI_WORLD);
 
     int64_t temp_local_part_count     = (int64_t)local_part_count;
     int64_t temp_local_parts_injected = (int64_t)local_parts_injected;
     int64_t temp_local_part_removed   = (int64_t)local_part_removed;
-    MPI_Reduce(&temp_local_part_count, &global_part_size, 1, MPI_INT64_T, MPI_SUM, OPP_ROOT, MPI_COMM_WORLD);
-    MPI_Reduce(&temp_local_parts_injected, &global_inj_size, 1, MPI_INT64_T, MPI_SUM, OPP_ROOT, MPI_COMM_WORLD);
-    MPI_Reduce(&temp_local_part_removed, &global_removed, 1, MPI_INT64_T, MPI_SUM, OPP_ROOT, MPI_COMM_WORLD);
+    MPI_Reduce(&temp_local_part_count, &global_part_size, 1, MPI_INT64_T, MPI_SUM, OPP_ROOT, OPP_MPI_WORLD);
+    MPI_Reduce(&temp_local_parts_injected, &global_inj_size, 1, MPI_INT64_T, MPI_SUM, OPP_ROOT, OPP_MPI_WORLD);
+    MPI_Reduce(&temp_local_part_removed, &global_removed, 1, MPI_INT64_T, MPI_SUM, OPP_ROOT, OPP_MPI_WORLD);
 
 #else
     global_part_size = local_part_count;

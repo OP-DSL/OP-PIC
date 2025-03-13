@@ -56,12 +56,12 @@ Both the regular and the HDF5 applications can be independently code generated u
 
 For regular OP-PIC application without HDF5, use
 ```bash
-python3 $OPP_TRANSLATOR -v -I$OPP_PATH/include/ --file_paths fempic.cpp
+python3 $OPP_TRANSLATOR -I$OPP_PATH/include/ --file_paths fempic.cpp
 ```
 
 If HDF5 is required, invoke the below command.
 ```bash
-python3 $OPP_TRANSLATOR -v -I$OPP_PATH/include/ --file_paths fempic_hdf5.cpp
+python3 $OPP_TRANSLATOR -I$OPP_PATH/include/ --file_paths fempic_hdf5.cpp
 ```
 
 Once the code-generator is invoked, a `fempic_opp.cpp` or `fempic_hdf5_opp.cpp` file and `seq`, `omp`, `mpi`, `cuda`, `hip` and `sycl` folders, including `opp_kernels.<cpp|cu>` and a loop kernel header file per unique `opp_par_loop` or `opp_particle_move` loop will get generated.
@@ -87,7 +87,7 @@ Once the platform specific target files are generated, use the provided `MakeFil
 ```
 
 ### Configuration
-An example configuration file is provided in `OP-PIC/app_fempic_cg/configs` folder.
+An example configuration file is provided in `configs` folder.
 
 This file can be used to change the application configurations such as number of steps in the main iterating loop (`num_steps`), domain mesh file (`global_mesh, inlet_mesh, wall_mesh` or `hdf_filename`) and other parameters such as `plasma_den`, `dt`. 
 

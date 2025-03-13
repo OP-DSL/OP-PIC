@@ -287,10 +287,10 @@ int main(int argc, char **argv)
                     opp_arg_dat(c_mask_ghost, OPP_READ),
                     opp_arg_dat(c_b,          OPP_READ),
                     opp_arg_gbl(&b_energy, 1, "double", OPP_INC));
-                log += str(e_energy*0.5, " e_energy: \t%.15f");
-                log += str(b_energy*0.5, " b_energy: \t%.15f");
+                    log += str((e_energy*0.5), " e_energy: \t%.15f");
+                    log += str((b_energy*0.5), " b_energy: \t%.15f");
 
-                OPP_RUN_ON_ROOT() fprintf(fptre,"%d, %.15f, %.15f\n", OPP_main_loop_iter, e_energy*0.5, b_energy*0.5);
+                OPP_RUN_ON_ROOT() fprintf(fptre,"%d, %2.25lE, %2.25lE\n", OPP_main_loop_iter, e_energy*0.5, b_energy*0.5);
             }
             if (opp_params->get<OPP_BOOL>("print_final"))
             {
@@ -316,18 +316,3 @@ int main(int argc, char **argv)
 
     return 0;
 }
-
-/*
-std::vector<int> recv_data;
-OPP_RUN_ON_ROOT() {
-    recv_data.resize(OPP_comm_size);
-}
-MPI_Gather(&(p_set->size), 1, MPI_INT, recv_data.data(), 1, MPI_INT, 0, MPI_COMM_WORLD);
-std::string logg = "";
-OPP_RUN_ON_ROOT() {
-    for (int i = 0; i < OPP_comm_size; ++i) {
-        logg += std::to_string(recv_data[i]) + " ";
-    }
-    opp_printf("Main", "ts: %d | parts %s ****", OPP_main_loop_iter, logg.c_str());
-}
-*/

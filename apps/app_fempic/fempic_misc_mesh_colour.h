@@ -48,7 +48,7 @@ inline int get_global_set_sizes(opp_set set, std::vector<int>& counts_vec, std::
     ifaces_offsets.resize(OPP_comm_size, -1);
 
 #ifdef USE_MPI
-    MPI_Allgather(&(set->size), 1, MPI_INT, &counts_vec[0], 1, MPI_INT, MPI_COMM_WORLD);
+    MPI_Allgather(&(set->size), 1, MPI_INT, &counts_vec[0], 1, MPI_INT, OPP_MPI_WORLD);
 
     int count = 0;
     for (int i = 0; i < OPP_comm_size; i++) {
@@ -128,7 +128,7 @@ inline void get_all_start_ends_mpi(const std::vector<int>& cell_counts, std::vec
     for (int dimx = 0; dimx < ndim; dimx++)  // reorder the mpi_dims to match the actual domain
         mpi_dims_reordered[cell_count_ordering[dimx]] = mpi_dims[dimx];
 
-    MPI_Cart_create(MPI_COMM_WORLD, ndim, mpi_dims_reordered.data(), periods, 1, &comm_cart);
+    MPI_Cart_create(OPP_MPI_WORLD, ndim, mpi_dims_reordered.data(), periods, 1, &comm_cart);
     MPI_Cart_get(comm_cart, ndim, mpi_dims, periods, coords);
 
     for (int dimx = 0; dimx < ndim; dimx++) 
@@ -137,8 +137,8 @@ inline void get_all_start_ends_mpi(const std::vector<int>& cell_counts, std::vec
     all_cell_starts.resize(OPP_comm_size * ndim);
     all_cell_ends.resize(OPP_comm_size * ndim);
 
-    MPI_Allgather(cell_starts, ndim, MPI_INT, all_cell_starts.data(), ndim, MPI_INT, MPI_COMM_WORLD);
-    MPI_Allgather(cell_ends, ndim, MPI_INT, all_cell_ends.data(), ndim, MPI_INT, MPI_COMM_WORLD);
+    MPI_Allgather(cell_starts, ndim, MPI_INT, all_cell_starts.data(), ndim, MPI_INT, OPP_MPI_WORLD);
+    MPI_Allgather(cell_ends, ndim, MPI_INT, all_cell_ends.data(), ndim, MPI_INT, OPP_MPI_WORLD);
 
     // if (OPP_rank == OPP_ROOT)
     // {
@@ -222,7 +222,7 @@ inline std::vector<int> fempicMPIDist(const std::map<std::string, std::map<std::
  * @return (void)
  */
 inline void fempic_color_block(opp_dat cell_colours, opp_dat cell_centroids, 
-                        opp_dat iface_n_pos, opp_map iface_v_node_map) {
+                        opp_dat iface_n_pos, opp_map iface_v_node_map) { OPP_RETURN_IF_INVALID_PROCESS;
 
 #ifdef USE_MPI    
     opp_profiler->start("genColsForPart");
@@ -252,17 +252,17 @@ inline void fempic_color_block(opp_dat cell_colours, opp_dat cell_centroids,
             int num_ifaces = num_ifaces_vec[source_rank];
      
             MPI_Irecv(&(g_if_to_n_map[index * N_PER_IF]), num_ifaces * N_PER_IF, MPI_INT, 
-                        source_rank, 0, MPI_COMM_WORLD, &(recv_requests[source_rank*2]));
+                        source_rank, 0, OPP_MPI_WORLD, &(recv_requests[source_rank*2]));
             MPI_Irecv(&(g_if_npos_dat[index * N_PER_IF * DIM]), num_ifaces * N_PER_IF * DIM, MPI_DOUBLE, 
-                        source_rank, 1, MPI_COMM_WORLD, &(recv_requests[source_rank*2+1]));
+                        source_rank, 1, OPP_MPI_WORLD, &(recv_requests[source_rank*2+1]));
 
             index += num_ifaces;
         }
     } 
     MPI_Send(iface_v_node_map->map, iface_v_node_map->from->size * N_PER_IF, MPI_INT, 0,
-                0, MPI_COMM_WORLD);
+                0, OPP_MPI_WORLD);
     MPI_Send(iface_n_pos->data, iface_v_node_map->from->size * N_PER_IF * DIM, MPI_DOUBLE, 0,
-                1, MPI_COMM_WORLD);
+                1, OPP_MPI_WORLD);
     MPI_Waitall(recv_requests.size(), recv_requests.data(), MPI_STATUS_IGNORE);
 
     if (OPP_rank == OPP_ROOT) {
@@ -344,11 +344,11 @@ inline void fempic_color_block(opp_dat cell_colours, opp_dat cell_centroids,
         grid = get_strgrid_and_dims(face_centroids, cell_counts);
         
         for (int rank = 1; rank < OPP_comm_size; rank++) {
-            MPI_Send(cell_counts.data(), cell_counts.size(), MPI_INT, rank, 1100, MPI_COMM_WORLD);
+            MPI_Send(cell_counts.data(), cell_counts.size(), MPI_INT, rank, 1100, OPP_MPI_WORLD);
         }
     }
     else {
-        MPI_Recv(cell_counts.data(), cell_counts.size(), MPI_INT, 0, 1100, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        MPI_Recv(cell_counts.data(), cell_counts.size(), MPI_INT, 0, 1100, OPP_MPI_WORLD, MPI_STATUS_IGNORE);
     }
 
     std::vector<int> all_cell_starts, all_cell_ends;
@@ -384,20 +384,20 @@ inline void fempic_color_block(opp_dat cell_colours, opp_dat cell_centroids,
         for (int rank = 1; rank < OPP_comm_size; rank++) {
 
             MPI_Send(g_if_npos_dat.data(), g_iface_size * N_PER_IF * DIM, MPI_DOUBLE, rank,
-                1000, MPI_COMM_WORLD);
+                1000, OPP_MPI_WORLD);
 
             MPI_Send(g_face_rank_assignments.data(), g_iface_size, MPI_INT, rank,
-                2000, MPI_COMM_WORLD);
+                2000, OPP_MPI_WORLD);
         }
     }
     else {
         MPI_Status status1, status2;
 
         MPI_Recv(g_if_npos_dat.data(), g_iface_size * N_PER_IF * DIM, MPI_DOUBLE, 0, 1000, 
-            MPI_COMM_WORLD, &status1);
+            OPP_MPI_WORLD, &status1);
 
         MPI_Recv(g_face_rank_assignments.data(), g_iface_size, MPI_INT, 0, 2000, 
-            MPI_COMM_WORLD, &status2);
+            OPP_MPI_WORLD, &status2);
         
         int count;
         MPI_Get_count(&status1, MPI_CHAR, &count);  

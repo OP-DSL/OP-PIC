@@ -208,7 +208,7 @@ void init_particles(opp_dat p_id, opp_dat p_pos, opp_dat p_vel, opp_dat p_mdir, 
         opp_get_data<OPP_INT>(p_mdir)[px * DIM + Dim::y] = 1;
 
         opp_get_data(p_cid)[px]       = cells.at(px);
-        opp_get_data<OPP_INT>(p_id)[px] = px; //((int*)gcid->data)[cells.at(px)]; 
+        opp_get_data<OPP_INT>(p_id)[px] = OPP_rank * 1000000 + px; //((int*)gcid->data)[cells.at(px)]; 
     }
     opp_profiler->end("Init_assign");
 
@@ -257,20 +257,48 @@ void distribute_data_over_ranks(std::shared_ptr<DataPointers>& g_m, std::shared_
 }
 
 /*************************************************************************************************
- * This is a utility function to get the total particles iterated during the simulation
+ * This is a utility function to gather from all MPI ranks
 */
 inline void get_global_values(const int64_t total_part_iter, int64_t& gbl_total_part_iter, 
-    int64_t& gbl_max_iter, int64_t& gbl_min_iter) {
-
+    int64_t& gbl_max_iter, int64_t& gbl_min_iter) 
+{
 #ifdef USE_MPI
-        MPI_Reduce(&total_part_iter, &gbl_total_part_iter, 1, MPI_INT64_T, MPI_SUM, OPP_ROOT, MPI_COMM_WORLD);
-        MPI_Reduce(&total_part_iter, &gbl_max_iter, 1, MPI_INT64_T, MPI_MAX, 0, MPI_COMM_WORLD);
-        MPI_Reduce(&total_part_iter, &gbl_min_iter, 1, MPI_INT64_T, MPI_MIN, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&total_part_iter, &gbl_total_part_iter, 1, MPI_INT64_T, MPI_SUM, OPP_ROOT, MPI_COMM_WORLD);
+    MPI_Reduce(&total_part_iter, &gbl_max_iter, 1, MPI_INT64_T, MPI_MAX, OPP_ROOT, MPI_COMM_WORLD);
+    MPI_Reduce(&total_part_iter, &gbl_min_iter, 1, MPI_INT64_T, MPI_MIN, OPP_ROOT, MPI_COMM_WORLD);
 #else
-        gbl_total_part_iter = total_part_iter;
-        gbl_max_iter = total_part_iter;
-        gbl_min_iter = total_part_iter;
+    gbl_total_part_iter = total_part_iter;
+    gbl_max_iter = total_part_iter;
+    gbl_min_iter = total_part_iter;
 #endif
+}
+
+/*************************************************************************************************
+ * This is a utility function to get the final log print
+*/
+inline std::string get_global_level_log(const opp_set part_set, const int incorrect_part_count)
+{
+    int64_t glb_parts, gbl_max_parts, gbl_min_parts;
+    int64_t glb_part_comms, gbl_max_part_comms, gbl_min_part_comms;
+    int64_t glb_max_hops, gbl_max_max_hops, gbl_min_max_hops;
+
+    get_global_values(part_set->size, glb_parts, gbl_max_parts, gbl_min_parts);   
+    get_global_values(OPP_part_comm_count_per_iter, glb_part_comms, gbl_max_part_comms, gbl_min_part_comms);
+    get_global_values(OPP_move_max_hops, glb_max_hops, gbl_max_max_hops, gbl_min_max_hops);
+
+    std::string log = str(incorrect_part_count, "errors: %d | ");
+    log += str(OPP_max_comm_iteration, "max_comm_iteration: %d | ");
+
+    log += str(glb_parts, "**** Gbl parts: %" PRId64 "");
+    log += str(gbl_min_parts, " Min %" PRId64 "");
+    log += str(gbl_max_parts, " Max %" PRId64 " | ");
+    log += str(glb_part_comms, "**** Gbl comms: %" PRId64 "");
+    log += str(gbl_max_part_comms, " Min %" PRId64 "");
+    log += str(gbl_min_part_comms, " Max %" PRId64 " | ");
+    log += str(gbl_max_max_hops, "**** Hops: Max %" PRId64 "");
+    log += str(gbl_min_max_hops, " Min %" PRId64 " | ");
+        
+    return log;
 }
 
 /***************************************************************************************************

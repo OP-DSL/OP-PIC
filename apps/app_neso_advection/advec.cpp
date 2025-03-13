@@ -51,14 +51,16 @@ int main(int argc, char **argv)
     {
     opp_profiler->start("Setup");
 
-        OPP_INT max_iter      = opp_params->get<OPP_INT>("num_steps");   
-        OPP_REAL dt           = opp_params->get<OPP_REAL>("dt");
-        OPP_REAL cell_width   = opp_params->get<OPP_REAL>("cell_width");
-        OPP_REAL extents[2]   = {opp_params->get<OPP_INT>("nx")*cell_width, opp_params->get<OPP_INT>("ny")*cell_width};
-        OPP_INT ndimcells[2]  = {opp_params->get<OPP_INT>("nx"), opp_params->get<OPP_INT>("ny")};
-        OPP_BOOL verify_parts = opp_params->get<OPP_BOOL>("verify_particles");
-        OPP_REAL grid_spacing = opp_params->get<OPP_REAL>("grid_spacing");
-        int64_t total_glb_part_iter = 0, total_gbl_part_comms = 0;
+        OPP_INT max_iter            = opp_params->get<OPP_INT>("num_steps");   
+        OPP_REAL dt                 = opp_params->get<OPP_REAL>("dt");
+        OPP_REAL cell_width         = opp_params->get<OPP_REAL>("cell_width");
+        OPP_REAL extents[2]         = {opp_params->get<OPP_INT>("nx")*cell_width, opp_params->get<OPP_INT>("ny")*cell_width};
+        OPP_INT ndimcells[2]        = {opp_params->get<OPP_INT>("nx"), opp_params->get<OPP_INT>("ny")};
+        OPP_BOOL verify_parts       = opp_params->get<OPP_BOOL>("verify_particles");
+        OPP_REAL grid_spacing       = opp_params->get<OPP_REAL>("grid_spacing");
+        const opp_point expansion(cell_width*2, cell_width*2, 0.0);
+        int64_t total_part_iter     = 0;
+        int incorrect_part_count    = 0;
 
         std::shared_ptr<DataPointers> m = LoadData();
 
@@ -92,8 +94,8 @@ int main(int argc, char **argv)
         init_particles(p_idx, p_pos, p_vel, p_mdir, p2c_map, c_pos_ll, c_idx);
         
         // these two lines are only required if we plan to use direct_hop
-        opp::BoundingBox bounding_box = opp::BoundingBox(c_pos_ll, DIM);
-        opp_init_direct_hop(grid_spacing, DIM, c_idx, bounding_box);
+        const opp::BoundingBox bounding_box(c_pos_ll, DIM, expansion);
+        opp_init_direct_hop(grid_spacing, c_idx, bounding_box);
 
         opp_printf("Setup Completed", "Cells[%d] Particles[%d] max_iter[%d]", cell_set->size, part_set->size, max_iter);
 
@@ -104,8 +106,7 @@ int main(int argc, char **argv)
         {
             opp_par_loop(update_pos_kernel, "update_pos", part_set, OPP_ITERATE_ALL,
                 opp_arg_dat(p_vel,  OPP_READ),
-                opp_arg_dat(p_pos,  OPP_RW),
-                opp_arg_dat(p_mdir, OPP_WRITE)
+                opp_arg_dat(p_pos,  OPP_RW)
             );
 
             opp_particle_move(move_kernel, "move", part_set, c2c_map, p2c_map,
@@ -114,35 +115,27 @@ int main(int argc, char **argv)
                 opp_arg_dat(c_pos_ll, p2c_map, OPP_READ)
             );
 
-            std::string log = "";
             if (verify_parts)
             {
-                int incorrect_part_count = 0;
+                incorrect_part_count = 0;
                 opp_par_loop(verify_kernel, "verify", part_set, OPP_ITERATE_ALL,
                     opp_arg_dat(p_pos,          OPP_READ),
                     opp_arg_dat(c_idx, p2c_map, OPP_READ),
                     opp_arg_gbl(&incorrect_part_count, 1, "int", OPP_INC)
                 );
-                log += str(incorrect_part_count, "errors: %d | ");
-                log += str(OPP_max_comm_iteration, "max_comm_iteration: %d");
             }
 
-            int64_t glb_parts, gbl_max_parts, gbl_min_parts;
-            int64_t glb_part_comms, gbl_max_part_comms, gbl_min_part_comms;
-            get_global_values(part_set->size, glb_parts, gbl_max_parts, gbl_min_parts);   
-            get_global_values(OPP_part_comm_count_per_iter, glb_part_comms, gbl_max_part_comms, gbl_min_part_comms);
-            total_glb_part_iter += glb_parts;
-            total_gbl_part_comms += glb_part_comms;
-
+            std::string log = get_global_level_log(part_set, incorrect_part_count);
             OPP_RUN_ON_ROOT()
-                opp_printf("Main", "ts: %d | %s **** Gbl parts: %" PRId64 " Min %" PRId64 " Max %" PRId64 " | **** Gbl comms: %" PRId64 " Max %" PRId64 " Min %" PRId64 "", 
-                    OPP_main_loop_iter, log.c_str(), glb_parts, gbl_min_parts, gbl_max_parts, glb_part_comms, gbl_max_part_comms, gbl_min_part_comms);  
+                opp_printf("Main", "ts: %d | %s", OPP_main_loop_iter, log.c_str());  
+        
+            total_part_iter += part_set->size; 
         }
     opp_profiler->end("MainLoop");
         
         OPP_RUN_ON_ROOT()
-            opp_printf("Main", "Completed %d iterations [%" PRId64 " parts iterated with %" PRId64 " comms]", 
-                max_iter, total_glb_part_iter, total_gbl_part_comms);
+            opp_printf("Main", "Completed %d iterations [%" PRId64 " parts iterated in ROOT]", 
+                max_iter, total_part_iter);
     }
 
     opp_exit();

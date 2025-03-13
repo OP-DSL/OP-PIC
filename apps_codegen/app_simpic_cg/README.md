@@ -1,18 +1,25 @@
 # OP-PIC SimPIC (Already code generated for reference)
 
+**Please follow the instructions provided in the main readme file first.**
+
+**This README file contains only additional information regarding the application.**
+
+##
 **This folder contain both user written code and OP-PIC code generated code.**
 
 All the user written code will have the below comment;
-
-`// *********************************************`<br>
-`// USER WRITTEN CODE                            `<br>
-`// *********************************************`
+```cpp
+// *********************************************
+// USER WRITTEN CODE                            
+// *********************************************
+```
 
 The code-generator has added the below comment to all the generated code; 
-
-`// *********************************************`<br>
-`// AUTO GENERATED CODE                          `<br>
-`// *********************************************`
+```cpp
+// *********************************************
+// AUTO GENERATED CODE                          
+// *********************************************
+```
 
 If code-generator is invoked in this folder, the available generated code will be replaced with the newly generated code (May generate the same if `simpic.cpp` or `kernels.h` is not changed)
 
@@ -49,8 +56,9 @@ In addition, the mesh/particles should be distributed, an appropriate partitioni
 
 ## Code Generation
 Code generation can be done by invoking the below command.
-
-`python3 $OPP_TRANSLATOR -v -I$OPP_PATH/include/ --file_paths simpic.cpp`
+```bash
+python3 $OPP_TRANSLATOR -I$OPP_PATH/include/ --file_paths simpic.cpp`
+```
 
 Once the code-generator is invoked, a `simpic_opp.cpp` file and `seq`, `omp`, `mpi`, `cuda` and `hip` folders, including `opp_kernels.<cpp|cu>` and a loop kernel header file per unique `opp_par_loop` or `opp_particle_move` loop will get generated.
 

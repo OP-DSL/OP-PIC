@@ -39,13 +39,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "fempic_defs.h"
 #include "minifempic_funcs.h"
 
-#ifndef USE_PETSC
-    #define Vec int
-    #define Mat int
-    #define KSP int
-    #define KSPConvergedReason int
-#endif
-
 class FESolver {
 public:
     FESolver(const opp_map c2n_map, const opp_dat n_type, const opp_dat n_pos, const opp_dat n_bnd_pot);
@@ -62,12 +55,10 @@ protected:
     void compute_node_potential(const opp_dat n_bnd_pot_dat, opp_dat node_potential_dat);
 
     void pre_assembly(const opp_dat n_bnd_pot);
-    void summarize(std::ostream &out);  
-
+    
+    void duplicate_vec(Vec* vec_mimic, Vec* vec_new);
     void add_ke(std::map<int, std::map<int, double>>& sparse_K, int e, double ke[4][4]);
     void add_fe(Vec *Fvec, int e, double fe[4]);
-    double evaluate_na(int a, double xi, double eta, double zeta);
-    void get_nax(double nx[3], int e, int a);
     void initialze_matrix(std::map<int, std::map<int, double>>& sparse_K);
     void compute_nx(const opp_dat n_pos);
     void sanity_check();
@@ -93,16 +84,16 @@ protected:
     std::vector<double> f1Local;
     std::vector<double> tempNEQ1, tempNEQ2, tempNEQ3;
 
-    const int n_nodes_set = 0;
-    const int n_nodes_inc_halo = 0; 
-    const int n_cells_set = 0;
-    const int n_cells_inc_halo = 0;
+    int n_nodes_set = 0;
+    int n_nodes_inc_halo = 0; 
+    int n_cells_set = 0;
+    int n_cells_inc_halo = 0;
 
     int neq = 0;        /*number of unknowns/equations*/
     int global_neq = 0;
     int own_start = 0;
     int own_end = 0;
-
+    
     /*quadrature points*/
     const double l[2] = { -sqrt(1.0/3.0), sqrt(1.0/3.0) };
     const double W[2] = { 1, 1 };
@@ -114,7 +105,7 @@ protected:
     KSP         ksp;            /* linear solver context */
     KSPConvergedReason reason;
 
-    std::vector<int> vec_col;                // in use - indices related to current MPI rank
+    std::vector<int> vec_col, ex_indices;                // in use - indices related to current MPI rank
 
     double *dLocal_d = nullptr;
     double *f1Local_d = nullptr;
@@ -122,6 +113,7 @@ protected:
     double *tempNEQ2_d = nullptr;
     double *tempNEQ3_d = nullptr;
     double *detJ_d = nullptr; 
+    double* tmpDptr = nullptr;
 
     int *node_to_eq_map_d= nullptr;
     

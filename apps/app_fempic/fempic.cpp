@@ -63,7 +63,7 @@ int main(int argc, char **argv)
         OPP_REAL wall_potential        = opp_params->get<OPP_REAL>("wall_potential");
         OPP_REAL grid_spacing          = opp_params->get<OPP_REAL>("grid_spacing");
         OPP_REAL mass                  = 2 * AMU;
-        OPP_REAL charge                = 1 * QE;
+        OPP_REAL charge                = opp_params->get<OPP_INT>("charge_multiple") * QE;
         OPP_INT max_iter               = opp_params->get<OPP_INT>("num_steps");   
         std::string log                = "";
         const OPP_BOOL print_final_log = opp_params->get<OPP_BOOL>("print_final");

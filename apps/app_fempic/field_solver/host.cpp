@@ -14,7 +14,7 @@ void FESolver::destroy_device_variables() {
 //*************************************************************************************************
 void FESolver::init_f1_and_J(const opp_dat ion_den_dat) 
 {   
-    const double* ion_den = (double*)(ion_den_dat->data);
+    const OPP_REAL* ion_den = opp_get_data<OPP_REAL>(ion_den_dat);
     for (int n = 0; n < n_nodes_inc_halo; n++) 
     {
         const int eq_idx = node_to_eq_map[n];
@@ -34,26 +34,26 @@ void FESolver::init_f1_and_J(const opp_dat ion_den_dat)
 //*************************************************************************************************
 void FESolver::build_f1_vector() 
 {
-    double Na = 0.0, ff = 0.0, fe[4];
+    double Na = 0.0, ff = 0.0; 
 
     for (int e = 0; e < n_cells_inc_halo; e++) 
     {
-        for (int a=0; a<4; a++) 
+        for (int a = 0; a < 4; a++) // get 4 nodes in tetrahedra
         {
             // IDEA : F1vec will be enriched only for the own range (owner compute),
             // hence import halo region calculation is not required here. is it correct?
-            const int node_idx = c2n_map->map[e * c2n_map->dim + a];
+            const int node_idx = c2n_map->map[e * N_PER_C + a];
             const int A = node_to_eq_map[node_idx]; 
-            if (A>=0)    /*if unknown node*/ 
+            if (A >= 0)    /*if unknown node*/ 
             {
                 ff = 0.0;
 
                 /*perform quadrature*/
-                for (int k=0;k<n_int;k++) 
+                for (int k = 0; k < n_int; k++) 
                 {
-                    for (int j=0;j<n_int;j++)
+                    for (int j = 0; j < n_int; j++)
                     {
-                        for (int i=0;i<n_int;i++) 
+                        for (int i = 0; i < n_int; i++) 
                         {
                             switch(a) // evaluate_na
                             {
@@ -64,23 +64,14 @@ void FESolver::build_f1_vector()
                                 default: Na = 0;  
                             }
 
-                            ff += tempNEQ1[A]*Na*detJ[e]*W[i]*W[j]*W[k];
+                            ff += (tempNEQ1[A] * Na * detJ[e] * W[i] * W[j] * W[k]);
                         }
                     }
                 }
 
                 ff *= (1.0/8.0);    /*change of limits*/
-                fe[a] = ff;
+                f1Local[A] += ff;
             }
-        }
-
-        for (int a=0;a<4;a++)    /*tetrahedra*/ 
-        {
-            const int node_idx = c2n_map->map[e * c2n_map->dim + a];
-            const int P = node_to_eq_map[node_idx]; 
-            if (P<0) continue;    /* skip g nodes or on a different rank (owner compute)*/
-            
-            f1Local[P] += fe[a];
         }
     }
 
@@ -91,17 +82,17 @@ void FESolver::build_f1_vector()
 //*************************************************************************************************
 void FESolver::build_j_matrix() 
 {     
-    double Na = 0.0, fe[4];  /*build fprime vector*/
+    double Na = 0.0;
 
     for (int e = 0; e < n_cells_inc_halo; e++) 
     {
-        for (int a=0;a<4;a++) 
+        for (int a = 0; a < 4; a++) // get 4 nodes in tetrahedra
         {
             double ff=0;
 
-            const int node_idx = c2n_map->map[e * c2n_map->dim + a];
+            const int node_idx = c2n_map->map[e * N_PER_C + a];
             const int A = node_to_eq_map[node_idx]; 
-            if (A>=0)    /*if unknown node*/ 
+            if (A >= 0)    /*if unknown node*/ 
             {
                 for (int k=0;k<n_int;k++) /*perform quadrature*/
                     for (int j=0;j<n_int;j++)
@@ -116,27 +107,16 @@ void FESolver::build_j_matrix()
                                 default: Na = 0;  
                             }
 
-                            ff += tempNEQ3[A]*Na*detJ[e]*W[i]*W[j]*W[k];
+                            ff += (tempNEQ3[A] * Na * detJ[e] * W[i] * W[j] * W[k]);
                         }
 
                 ff *= (1.0 / 8.0);    /*change of limits*/
+                tempNEQ2[A] += ff;
             }
-
-            fe[a] = ff;
-        }
-
-        /*assembly*/
-        for (int a=0;a<4;a++)    /*tetrahedra*/ 
-        {
-            const int node_idx = c2n_map->map[e * c2n_map->dim + a];
-            const int P = node_to_eq_map[node_idx]; 
-            if (P<0) continue;    /*skip g nodes*/
-
-            tempNEQ2[P] += fe[a];
         }
     }
 
-    for (int u=0;u<neq;u++) /*subtract diagonal term*/
+    for (int u = 0; u < neq; u++) /*subtract diagonal term*/
         MatSetValue(Jmat, (u + own_start), (u + own_start), (-tempNEQ2[u]), ADD_VALUES); // J[u][u]-=tempNEQ2[u];
 
     MatAssemblyBegin(Jmat, MAT_FINAL_ASSEMBLY); MatAssemblyEnd(Jmat, MAT_FINAL_ASSEMBLY);
@@ -145,18 +125,25 @@ void FESolver::build_j_matrix()
 //*************************************************************************************************
 void FESolver::compute_node_potential(const opp_dat n_bnd_pot_dat, opp_dat node_potential_dat) {
 
-    VecGetValues(Dvec, neq, vec_col.data(), dLocal.data()); 
+    // VecGetValues(Dvec, neq, vec_col.data(), dLocal.data()); 
+    VecGhostUpdateBegin(Dvec, INSERT_VALUES, SCATTER_FORWARD);
+    VecGhostUpdateEnd(Dvec, INSERT_VALUES, SCATTER_FORWARD);
+    VecGetArray(Dvec, &tmpDptr);
+    for (int i = 0; i < neq; i++) {
+        dLocal[i] = tmpDptr[ex_indices[i]];
+    }
+    VecRestoreArray(Dvec, &tmpDptr);
 
     const double* n_bnd_pot = (double*)(n_bnd_pot_dat->data);
     double* node_potential = (double*)(node_potential_dat->data);
 
     /* combine d (solution from linear solver) and boundary potential to get node_potential */
-    for (int n = 0;n < n_nodes_set; n++) // owner compute, hence can have only upto node set size
+    for (int n = 0; n < n_nodes_set; n++) // owner compute, hence can have only upto node set size
     {
         node_potential[n] = n_bnd_pot[n]; /*zero on non-g nodes*/
 
-        int A=node_to_eq_map[n];
-        if (A>=0)           /*is this a non-boundary node?*/
+        const int A = node_to_eq_map[n];
+        if (A >= 0)           /*is this a non-boundary node?*/
             node_potential[n] += dLocal[A];
     }
 }

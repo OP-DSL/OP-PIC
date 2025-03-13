@@ -51,7 +51,7 @@ inline std::shared_ptr<DataPointers> load_mesh()
 
     OPP_RUN_ON_ROOT() init_mesh(g_m);
 
-    std::shared_ptr<DataPointers> m;
+    std::shared_ptr<DataPointers> m = std::make_shared<DataPointers>();;
     distribute_data_over_ranks(g_m, m);
 
     return m;
@@ -63,7 +63,7 @@ inline std::shared_ptr<DataPointers> load_mesh()
  * @param m std::shared_ptr<DataPointers> loaded with mesh data
  * @return (void)
  */
-void init_mesh(std::shared_ptr<DataPointers> mesh) {
+void init_mesh(std::shared_ptr<DataPointers> mesh) { OPP_RETURN_IF_INVALID_PROCESS;
 
     std::shared_ptr<Volume> volume(new Volume());
     if (!LoadVolumeMesh(opp_params->get<OPP_STRING>("global_mesh"), *(volume.get())) ||
@@ -73,7 +73,7 @@ void init_mesh(std::shared_ptr<DataPointers> mesh) {
         return;
     }
 
-    OPP_RUN_ON_ROOT() volume->summarize(std::cout);
+    volume->summarize(std::cout);
 
     mesh->n_nodes  = volume->nodes.size();
     mesh->n_cells  = volume->elements.size();
@@ -182,13 +182,11 @@ void init_mesh(std::shared_ptr<DataPointers> mesh) {
 
 //*************************************************************************************************
 inline void distribute_data_over_ranks(std::shared_ptr<DataPointers>& g_m, std::shared_ptr<DataPointers>& m)
-{ 
+{ OPP_RETURN_IF_INVALID_PROCESS;
 #ifdef USE_MPI
-    MPI_Bcast(&(g_m->n_nodes), 1, MPI_INT, OPP_ROOT, MPI_COMM_WORLD);
-    MPI_Bcast(&(g_m->n_cells), 1, MPI_INT, OPP_ROOT, MPI_COMM_WORLD);
-    MPI_Bcast(&(g_m->n_ifaces), 1, MPI_INT, OPP_ROOT, MPI_COMM_WORLD);
-
-    m = std::make_shared<DataPointers>();
+    MPI_Bcast(&(g_m->n_nodes), 1, MPI_INT, OPP_ROOT, OPP_MPI_WORLD);
+    MPI_Bcast(&(g_m->n_cells), 1, MPI_INT, OPP_ROOT, OPP_MPI_WORLD);
+    MPI_Bcast(&(g_m->n_ifaces), 1, MPI_INT, OPP_ROOT, OPP_MPI_WORLD);
 
     m->n_nodes  = opp_get_uniform_local_size(g_m->n_nodes);
     m->n_cells  = opp_get_uniform_local_size(g_m->n_cells);

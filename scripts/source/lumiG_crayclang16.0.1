@@ -7,32 +7,43 @@ module purge
 # module load SCOTCH/6.1.3-cpeCray-23.09
 # module load cray-hdf5-parallel
 
-module load CrayEnv
-module load buildtools/23.09
-module load PrgEnv-cray/8.4.0
-module load cce/16.0.1
-module load craype-accel-amd-gfx90a
-module load craype-x86-trento
-module load cray-hdf5-parallel
+# module load CrayEnv
+# module load buildtools/23.09
+# module load PrgEnv-cray/8.4.0
+# module load cce/16.0.1
+# module load craype-accel-amd-gfx90a
+# module load craype-x86-trento
+# module load cray-hdf5-parallel
+# module use /pfs/lustrep2/projappl/project_462000125/samantao-public/mymodules
+# module load rocm/5.4.3 omniperf/2.0.1-rocm-5.4.x
+
+module load LUMI/24.03
+module load partition/G
+module load PrgEnv-amd
+module load buildtools-python/24.03-cray-python3.11
 module use /pfs/lustrep2/projappl/project_462000125/samantao-public/mymodules
-module load rocm/5.4.3 omniperf/2.0.1-rocm-5.4.x
+module load omniperf
 
 export CC_COMPILER=CC
 export MPI_COMPILER=CC
 export HIP_COMPILER=CC
 export HIPCCFLAGS_ADD="-x hip"
+export ROCM_INSTALL_DIR=/opt/rocm-6.0.3
 
-export OPP=/users/lantraza/phd/OP-PIC
+export OPP=$HOME/phd/OP-PIC
 export OPP_INSTALL_PATH=$OPP/opp_install
 export OPP_TRANSLATOR=$OPP/opp_translator/translator
 export OPP_PATH=$OPP/opp_lib
 
-export PETSC_INSTALL_PATH=/users/lantraza/phd/lib_install/petsc-3.20.5
+export PETSC_INSTALL_PATH=/project/project_465001434/zam/petsc-3.22.3
 export LD_LIBRARY_PATH=$PETSC_INSTALL_PATH/lib:$LD_LIBRARY_PATH
+
+export HDF5_INSTALL_PATH=/project/project_465001434/zam/hdf5-1.14.2
+export LD_LIBRARY_PATH=$HDF5_INSTALL_PATH/lib:$LD_LIBRARY_PATH
 
 # # uncomment these if using hipcc
 # export HIPCC_COMPILE_FLAGS_APPEND="--offload-arch=gfx90a $(CC --cray-print-opts=cflags)"
 # export HIPCC_LINK_FLAGS_APPEND=$(CC --cray-print-opts=libs)
 
-module load buildtools-python/23.09-cray-python3.10
-source $OPP/opp_translator/opp_venv/bin/activate
+# module load buildtools-python/23.09-cray-python3.10
+# source $OPP/opp_translator/opp_venv/bin/activate

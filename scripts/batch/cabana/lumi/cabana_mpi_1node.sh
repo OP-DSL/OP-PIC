@@ -7,7 +7,7 @@
 #SBATCH --nodes=1                    # Total number of nodes 
 #SBATCH --ntasks-per-node=8          # 8 MPI ranks per node, 16 total (2x8)
 #SBATCH --gpus-per-node=8            # Allocate one gpu per MPI rank
-#SBATCH --time=0-02:00:00            # Run time (d-hh:mm:ss)
+#SBATCH --time=0-00:10:00            # Run time (d-hh:mm:ss)
 #SBATCH --mail-type=all              # Send email at begin and end of job
 #SBATCH --account=project_465001068  # Project for billing
 #SBATCH --mail-user=username@domain.com
@@ -16,7 +16,7 @@ echo "Start date and time: $(date +"%Y-%m-%d %H:%M:%S")"
 
 runFolder=$PWD"/MPI_N"${SLURM_JOB_NUM_NODES}"_SR"${use_seg_red}"_"$(date +"D_%Y_%m_%d_T_%I_%M_%S")
 
-binpath=/users/lantraza/phd/OP-PIC/app_cabanapic/bin
+binpath=/users/lantraza/phd/OP-PIC/app_cabanapic_cg/bin
 binary=$binpath"/hip_mpi"
 
 configFile="cabana.param"
@@ -41,17 +41,16 @@ export OMP_PROC_BIND=close
 CPU_BIND="map_cpu:49,57,17,25,1,9,33,41"
 export MPICH_GPU_SUPPORT_ENABLED=0
 
-module load LUMI/23.09
+module load LUMI/24.03
 module load partition/G
-module load cray-hdf5-parallel
-module load SCOTCH/6.1.3-cpeCray-23.09
+module load PrgEnv-amd
 
 num_nodes=$SLURM_JOB_NUM_NODES
 vel_mult=0.0
 
-for config in 750 1500 3000; do
-    for gpus in 1 2 4 8; do
-        for run in 1 2 3; do
+for config in 750 1500; do
+    for gpus in 2; do
+        for run in 1; do
 
             (( totalGPUs=$gpus*$SLURM_JOB_NUM_NODES ))
             echo "Running MPI BLOCK " $config $run $totalGPUs $vel_mult

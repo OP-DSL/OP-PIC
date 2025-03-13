@@ -44,6 +44,6 @@ INT gpu_reduction_arrays = 16
 
 # HoleFill_All Sort_All Shuffle_All Sort_Periodic Shuffle_Periodic
 STRING opp_fill = Shuffle_Periodic
-INT opp_fill_period = 6
+INT opp_fill_period = 25
 
 INT opp_partitions = 1

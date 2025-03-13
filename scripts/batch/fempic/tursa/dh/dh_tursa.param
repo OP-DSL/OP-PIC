@@ -1,24 +1,24 @@
 # System parameters
-REAL plasma_den           = 1.0e18
-REAL ion_velocity         = 1e8
+REAL plasma_den           = 0.9625e18
+REAL ion_velocity   = 1e8
 REAL electron_temperature = 2e8
-REAL wall_potential       = 10000000
-STRING plasma_species     = Duterium
-REAL spwt                 = 2e2
+REAL wall_potential = 10000000
+STRING plasma_species = Duterium
+REAL spwt = 2e2
 INT charge_multiple = 1
 
 # Simulation parameters
-INT num_steps          = 250
-REAL dt                = 1e-12
+INT num_steps = 250
+REAL dt       = 1e-12
 STRING fesolver_method = petsc
-BOOL check_max_values  = true
+BOOL check_max_values = true
 
 # Input files
 STRING global_mesh  = <path_to_mesh_files>/mesh.dat
 STRING inlet_mesh   = <path_to_mesh_files>/inlet.dat
 STRING wall_mesh    = <path_to_mesh_files>/wall.dat
 # OR
-STRING hdf_filename = <path_to_hdf5_mesh_files>/box_48000.hdf5
+STRING hdf_filename = <path_to_hdf5_mesh_file>
 
 STRING rand_file    = /home/dp360/dp360/dc-lant1/phd/box_mesh_gen/random_200k.dat
 
@@ -35,15 +35,16 @@ BOOL print_final   = true
 BOOL opp_global_move = false
 REAL grid_spacing  = 25e-6
 BOOL opp_dh_data_generate = false
+STRING opp_dh_mesh_folder  = /home/dp360/dp360/dc-lant1/phd/box_mesh_gen/dh_meshes/fempic/
 # Use opp_dh_data_generate = true and OPP_DH_DATA_DUMP=1 in args to dump the structured mesh
 
 # block k-means mpi-block
 STRING cluster = block
 BOOL opp_segmented_red = false
-INT gpu_reduction_arrays = 16
+INT gpu_reduction_arrays = 512
 
 # HoleFill_All Sort_All Shuffle_All Sort_Periodic Shuffle_Periodic
-STRING opp_fill = Shuffle_Periodic
-INT opp_fill_period = 6
+STRING opp_fill = HoleFill_All
+INT opp_fill_period = 4
 
 INT opp_partitions = 1

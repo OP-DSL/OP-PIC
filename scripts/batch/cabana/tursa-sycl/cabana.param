@@ -18,7 +18,7 @@ STRING cluster = block
 # System parameters
 BOOL opp_auto_sort          = false
 REAL opp_allocation_multiple = 1.1
-INT opp_threads_per_block   = 128
+INT opp_threads_per_block   = 512
 BOOL opp_profile_all        = false
 BOOL print_final   = true
 INT opp_gpu_direct = 0

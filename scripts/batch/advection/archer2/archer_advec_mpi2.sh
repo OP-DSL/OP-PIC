@@ -1,15 +1,14 @@
 #!/bin/bash
 
-#SBATCH --job-name=adv_sh1
-#SBATCH --time=01:20:00
-#SBATCH --nodes=1
+#SBATCH --job-name=adv_sh2
+#SBATCH --time=00:20:00
+#SBATCH --nodes=2
 #SBATCH --ntasks-per-node=128
 #SBATCH --cpus-per-task=1
 
 #SBATCH --account=e723-neptune             
 #SBATCH --partition=standard
 #SBATCH --qos=short
-#SBATCH --exclusive
 
 echo "Start date and time: $(date +"%Y-%m-%d %H:%M:%S")"
 
@@ -42,30 +41,10 @@ num_nodes=$SLURM_JOB_NUM_NODES
 configFile="advec.param"
 file=$PWD'/'$configFile
 
-# mesh=512
-# for ppc in 425 850 1700; do
-#     for run in 1 2; do
+mesh=512
+for run in 1 2; do
+    for ppc in 425 850 1700; do
         
-#         (( actual_ny=mesh*SLURM_JOB_NUM_NODES ))
-#         folder=$runFolder/$ppc"_mpi"
-
-#         echo "Running MPI" $file $ppc $folder $nx $actual_ny $ppc $(date +"%Y-%m-%d %H:%M:%S")
-
-#         mkdir -p $folder
-#         cp $file $folder
-#         currentfilename=$folder/$configFile
-
-#         sed -i "s/INT nx = 256/INT nx = ${mesh}/" ${currentfilename}
-#         sed -i "s/INT ny = 256/INT ny = ${actual_ny}/" ${currentfilename}
-#         sed -i "s/INT npart_per_cell = 1000/INT npart_per_cell = ${ppc}/" ${currentfilename}
-
-#         srun --distribution=block:block --hint=nomultithread ${binary} ${currentfilename} | tee $folder/log_G${num_nodes}_M${mesh}_D${ppc}_ARR1_R${run}.log;
-#     done
-# done
-
-mesh=256
-for ppc in 1700 3400 6800; do
-    for run in 1 2; do  
         (( actual_ny=mesh*SLURM_JOB_NUM_NODES ))
         folder=$runFolder/$ppc"_mpi"
 
@@ -79,9 +58,29 @@ for ppc in 1700 3400 6800; do
         sed -i "s/INT ny = 256/INT ny = ${actual_ny}/" ${currentfilename}
         sed -i "s/INT npart_per_cell = 1000/INT npart_per_cell = ${ppc}/" ${currentfilename}
 
-        srun --distribution=block:block --hint=nomultithread ${binary} ${currentfilename} | tee $folder/log_G${num_nodes}_M${mesh}_D${ppc}_ARR1_R${run}.log;
+        srun --distribution=block:block --hint=nomultithread --unbuffered --cpu-bind=cores ${binary} ${currentfilename} | tee $folder/log_G${num_nodes}_M${mesh}_D${ppc}_ARR1_R${run}.log;
     done
 done
+
+# mesh=256
+# for ppc in 1700 3400 6800; do
+#     for run in 1 2; do  
+#         (( actual_ny=mesh*SLURM_JOB_NUM_NODES ))
+#         folder=$runFolder/$ppc"_mpi"
+
+#         echo "Running MPI" $file $ppc $folder $nx $actual_ny $ppc $(date +"%Y-%m-%d %H:%M:%S")
+
+#         mkdir -p $folder
+#         cp $file $folder
+#         currentfilename=$folder/$configFile
+
+#         sed -i "s/INT nx = 256/INT nx = ${mesh}/" ${currentfilename}
+#         sed -i "s/INT ny = 256/INT ny = ${actual_ny}/" ${currentfilename}
+#         sed -i "s/INT npart_per_cell = 1000/INT npart_per_cell = ${ppc}/" ${currentfilename}
+
+#         srun --distribution=block:block --hint=nomultithread --unbuffered --cpu-bind=cores ${binary} ${currentfilename} | tee $folder/log_G${num_nodes}_M${mesh}_D${ppc}_ARR1_R${run}.log;
+#     done
+# done
 
 echo "simulation done"
 

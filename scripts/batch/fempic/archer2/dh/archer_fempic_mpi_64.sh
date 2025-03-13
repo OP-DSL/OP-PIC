@@ -1,7 +1,7 @@
 #!/bin/bash
 
-#SBATCH --job-name=femN64
-#SBATCH --time=01:00:00
+#SBATCH --job-name=femD64
+#SBATCH --time=04:00:00
 #SBATCH --nodes=64
 #SBATCH --ntasks-per-node=128
 #SBATCH --cpus-per-task=1
@@ -98,9 +98,10 @@ mkdir -p $folder
 
 cp $file $folder
 sed -i "s/STRING hdf_filename = <path_to_hdf5_mesh_file>/STRING hdf_filename = ${escaped_folder}\/box_${mesh_full}.hdf5/" ${currentfilename}
+sed -i "s/BOOL opp_dh_data_generate = false/BOOL opp_dh_data_generate = true/" ${currentfilename}
 
-srun --distribution=block:block --hint=nomultithread --unbuffered --cpu-bind=cores $binary $currentfilename > ${folder}/run_G${SLURM_JOB_NUM_NODES}_M${mesh}_D0.9625e18_ARR0_r1.log
-srun --distribution=block:block --hint=nomultithread --unbuffered --cpu-bind=cores $binary $currentfilename > ${folder}/run_G${SLURM_JOB_NUM_NODES}_M${mesh}_D0.9625e18_ARR0_r2.log
+# srun --distribution=block:block --hint=nomultithread --unbuffered --cpu-bind=cores $binary $currentfilename > ${folder}/run_G${SLURM_JOB_NUM_NODES}_M${mesh}_D0.9625e18_ARR0_r1.log
+# srun --distribution=block:block --hint=nomultithread --unbuffered --cpu-bind=cores $binary $currentfilename > ${folder}/run_G${SLURM_JOB_NUM_NODES}_M${mesh}_D0.9625e18_ARR0_r2.log
 
 sed -i "s/BOOL opp_global_move = false/BOOL opp_global_move = true/" ${currentfilename}
 

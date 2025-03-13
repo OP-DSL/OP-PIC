@@ -37,7 +37,11 @@ vg*
 old
 advix*
 ncu*/
-energy.csv
+energy*.csv
+dh_meshes
+dh_c*
+single_node_perf
+NEW_*
 app_cabanapic/seq/
 app_cabanapic/omp/
 app_cabanapic/mpi/

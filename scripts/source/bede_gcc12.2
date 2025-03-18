@@ -25,3 +25,10 @@ export PATH=/users/csrcnl/lib_install/Python-3.12.3/bin:$PATH
 source $OPP/opp_translator/opp_venv/bin/activate
 
 # export LIBCLANG_PATH=/opt/llvm/14.0.6/lib/libclang.so
+
+# In makefiles -------------------------------------------------------
+
+# for ibm-power9 use  "-mcpu=native" instead of "-march=native"
+
+# for grace-hopper use "-mcpu=neoverse-v1" instead of "-march=native"
+# also, export NVCCFLAGS_ADD='-gencode arch=compute_90,code=sm_90'

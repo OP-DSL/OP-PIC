@@ -30,7 +30,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 //*********************************************
-// AUTO GENERATED CODE
+// USER WRITTEN CODE
 //*********************************************
 
 #include "opp_templates.h"

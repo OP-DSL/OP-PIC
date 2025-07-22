@@ -50,12 +50,12 @@ ENV MPI_COMPILER=mpicxx
 # setup user installed libs
 ENV PETSC_INSTALL_PATH=/usr/lib/petsc
 
-ENV HDF5_INSTALL_PATH=/usr/lib/x86_64-linux-gnu/hdf5/openmpi
+ENV HDF5_INSTALL_PATH=/usr/lib/aarch64-linux-gnu/hdf5/openmpi
 # 'x86_64-linux-gnu' for x86_64, 'aarch64-linux-gnu' for Mac M1
 
 # clone the OP-PIC library
 WORKDIR /home/myuser/
-RUN git clone https://github.com/OP-DSL/OP-PIC.git /home/myuser/OP-PIC
+RUN git clone https://github.com/OP-DSL/OP-PIC.git /home/myuser/OP-PIC 
 WORKDIR /home/myuser/OP-PIC
 
 # setup OP-PIC related environment variables
@@ -72,23 +72,23 @@ RUN ./setup_venv.sh
 # Compile Mini-FEM-PIC --------------------------------------------------------
 
 # activate OP-PIC translator environment and code-generate Mini-FEM-PIC
-WORKDIR /home/myuser/OP-PIC/app_fempic
+WORKDIR /home/myuser/OP-PIC/apps/app_fempic
 RUN . /home/myuser/OP-PIC/opp_translator/opp_venv/bin/activate && \
   python3 $OPP_TRANSLATOR -v -I$OPP_PATH/include/ --file_paths fempic.cpp && \
   python3 $OPP_TRANSLATOR -v -I$OPP_PATH/include/ --file_paths fempic_hdf5.cpp
 
 # compile lib for Mini-FEM-PIC
 WORKDIR /home/myuser/OP-PIC/opp_lib
-RUN make PETSC=1 seq
-RUN make PETSC=1 mpi
-RUN make PETSC=1 omp
+RUN make PETSC=1 seq -j4
+RUN make PETSC=1 mpi -j4
+RUN make PETSC=1 omp -j4
 
 # compile Mini-FEM-PIC application
-WORKDIR /home/myuser/OP-PIC/app_fempic
-RUN make PETSC=1 seq
-RUN make PETSC=1 mpi
-RUN make PETSC=1 omp
-RUN make PETSC=1 mpi_hdf5 || \
+WORKDIR /home/myuser/OP-PIC/apps/app_fempic
+RUN make PETSC=1 seq -j4
+RUN make PETSC=1 mpi -j4
+RUN make PETSC=1 omp -j4
+RUN make PETSC=1 mpi_hdf5 -j4 || \
     echo "Script is written for architecture x86_64, please check the arch using echo $(uname -m) and change HDF5_INSTALL_PATH if required" 
 
 # Copy the unzipped artifacts
@@ -102,12 +102,12 @@ WORKDIR /home/myuser/OP-PIC_Artifacts/mesh_files
 RUN python3 extract_tar.py
 
 # update the config file with the mesh directory
-WORKDIR /home/myuser/OP-PIC/app_fempic
-RUN sed -i 's|STRING global_mesh  = .*|STRING global_mesh  = /home/myuser/OP-PIC_Artifacts/mesh_files/48000/mesh.dat|' /home/myuser/OP-PIC/app_fempic/configs/coarse.param
-RUN sed -i 's|STRING inlet_mesh   = .*|STRING inlet_mesh   = /home/myuser/OP-PIC_Artifacts/mesh_files/48000/inlet.dat|' /home/myuser/OP-PIC/app_fempic/configs/coarse.param
-RUN sed -i 's|STRING wall_mesh    = .*|STRING wall_mesh    = /home/myuser/OP-PIC_Artifacts/mesh_files/48000/wall.dat|' /home/myuser/OP-PIC/app_fempic/configs/coarse.param
-RUN sed -i 's|STRING hdf_filename = .*|STRING hdf_filename = /home/myuser/OP-PIC_Artifacts/mesh_files/box_48000.hdf5|' /home/myuser/OP-PIC/app_fempic/configs/coarse.param
-RUN sed -i 's|STRING rand_file    = .*|STRING rand_file    = /home/myuser/OP-PIC_Artifacts/mesh_files/random_100k.dat|' /home/myuser/OP-PIC/app_fempic/configs/coarse.param
+WORKDIR /home/myuser/OP-PIC/apps/app_fempic
+RUN sed -i 's|STRING global_mesh  = .*|STRING global_mesh  = /home/myuser/OP-PIC_Artifacts/mesh_files/48000/mesh.dat|' /home/myuser/OP-PIC/apps/app_fempic/configs/coarse.param
+RUN sed -i 's|STRING inlet_mesh   = .*|STRING inlet_mesh   = /home/myuser/OP-PIC_Artifacts/mesh_files/48000/inlet.dat|' /home/myuser/OP-PIC/apps/app_fempic/configs/coarse.param
+RUN sed -i 's|STRING wall_mesh    = .*|STRING wall_mesh    = /home/myuser/OP-PIC_Artifacts/mesh_files/48000/wall.dat|' /home/myuser/OP-PIC/apps/app_fempic/configs/coarse.param
+RUN sed -i 's|STRING hdf_filename = .*|STRING hdf_filename = /home/myuser/OP-PIC_Artifacts/mesh_files/box_48000.hdf5|' /home/myuser/OP-PIC/apps/app_fempic/configs/coarse.param
+RUN sed -i 's|STRING rand_file    = .*|STRING rand_file    = /home/myuser/OP-PIC_Artifacts/mesh_files/random_100k.dat|' /home/myuser/OP-PIC/apps/app_fempic/configs/coarse.param
 
 # Run Mini-FEM-PIC for 250 iterations with smaller configurations ------------
 
@@ -129,21 +129,21 @@ RUN mpirun -np 4 bin/mpi_hdf5 configs/coarse.param > run_fempic_mpi_hdf5.log
 # Compile CabanaPIC ----------------------------------------------------------
   
 # activate OP-PIC translator environment and code-generate CabanaPIC
-WORKDIR /home/myuser/OP-PIC/app_cabanapic
+WORKDIR /home/myuser/OP-PIC/apps/app_cabanapic
 RUN . /home/myuser/OP-PIC/opp_translator/opp_venv/bin/activate && \
   python3 $OPP_TRANSLATOR -v -I$OPP_PATH/include/ --file_paths cabana.cpp
 
 # compile lib for CabanaPIC
 WORKDIR /home/myuser/OP-PIC/opp_lib
-RUN make PETSC=0 seq
-RUN make PETSC=0 mpi
-RUN make PETSC=0 omp
+RUN make PETSC=0 seq -j4
+RUN make PETSC=0 mpi -j4
+RUN make PETSC=0 omp -j4
 
 # compile CabanaPIC application
-WORKDIR /home/myuser/OP-PIC/app_cabanapic
-RUN make PETSC=0 seq
-RUN make PETSC=0 mpi
-RUN make PETSC=0 omp
+WORKDIR /home/myuser/OP-PIC/apps/app_cabanapic
+RUN make PETSC=0 seq -j4
+RUN make PETSC=0 mpi -j4
+RUN make PETSC=0 omp -j4
 
 # Run CabanaPIC for 100 iterations with smaller configurations ----------------
 
